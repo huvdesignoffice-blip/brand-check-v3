@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
 : 'https://brand-check-v2.vercel.app/admin';
 
     const { data, error } = await resend.emails.send({
-      from: 'noreply@huvdesignoffice.com',
-      to: [process.env.ADMIN_EMAIL],
+      from: 'onboarding@resend.dev',
+      to: ['huvdesignoffice@gmail.com'],
       subject: `新しいブランドチェック回答: ${company_name}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -69,3 +69,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
