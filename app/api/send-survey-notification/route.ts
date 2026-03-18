@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+﻿import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 : 'https://brand-check-v2.vercel.app/admin';
 
     const { data, error } = await resend.emails.send({
-      from: 'delivered@resend.dev',
+      from: 'noreply@huvdesignoffice.com',
       to: [process.env.ADMIN_EMAIL],
       subject: `新しいブランドチェック回答: ${company_name}`,
       html: `
