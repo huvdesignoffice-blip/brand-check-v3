@@ -120,7 +120,6 @@ export default function ResultPage() {
     // 管理者セッション確認
     const adminSession = sessionStorage.getItem('admin_authenticated');
     setIsAdmin(adminSession === 'true');
-    setUnlocked(adminSession === 'true');
 
     (async () => {
       const { data, error } = await supabase
@@ -131,6 +130,7 @@ export default function ResultPage() {
       if (!error && data) {
         setResult(data);
         setConsultationMemo(data.consultation_memo || '');
+        setUnlocked(data.stage2_unlocked === true || sessionStorage.getItem('admin_authenticated') === 'true');
         if (!data.ai_report) await generateAIReport(data);
       }
       setLoading(false);
@@ -626,5 +626,7 @@ export default function ResultPage() {
     </>
   );
 }
+
+
 
 
