@@ -5,25 +5,90 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// v2.2 新12設問（時計回り因果連鎖順）
 const categoryNames = [
-  "市場理解",
+  "ターゲット理解",
+  "ブランドストーリー/WHY",
+  "ブランドパーソナリティ",
   "競合分析",
   "自社分析",
   "価値提案",
   "独自性",
-  "製品・サービス",
-  "コミュニケーション",
+  "商品・サービス独自性反映",
+  "コミュニケーション一貫性",
   "インナーブランディング",
-  "KPI管理",
-  "成果",
-  "知財保護",
-  "成長意欲",
+  "KPI設定と成果確認",
+  "ブランドガイドライン整備",
 ];
+
+// 層定義
+const LAYERS = {
+  base: { name: "ブランド基盤", indices: [0, 1, 2], sd: 0.8 },
+  strategy: { name: "戦略設計", indices: [3, 4, 5, 6], sd: 0.9 },
+  execution: { name: "実行・浸透", indices: [7, 8, 9, 10, 11], sd: 0.8 },
+};
+
+// 業界平均（参考値）
+const INDUSTRY_AVG = [2.8, 2.4, 2.2, 3.1, 3.0, 2.9, 2.7, 2.9, 2.8, 2.5, 2.3, 2.6];
+
+// 因果ペア定義（川上index, 川下index, 重み, リスク説明）
+const CAUSAL_PAIRS: [number, number, number, string][] = [
+  [0, 6, 1.5, "インサイト不足のまま独自性を高評価→市場に刺さらない差別化になる「顧客不在の独自化リスク」"],
+  [1, 8, 1.5, "WHYなき一貫性→形式は整うが顧客の心を動かさない発信になる「軸なき発信リスク」"],
+  [2, 11, 1.5, "性格未定義のままガイドライン整備→何のための基準か不明な形骸化リスク"],
+  [3, 5, 1.0, "競合分析不足のまま価値提案を高評価→単なる自己申告になる「根拠なき価値提案リスク」"],
+  [4, 7, 1.0, "自社分析不足のまま商品独自性を主張→強みの過信・過小評価リスク"],
+  [0, 7, 1.0, "インサイト不足→真のお困りごとを解決できていない商品になる「顧客課題不在リスク」"],
+  [5, 7, 0.5, "価値提案と商品設計の整合が不十分な可能性"],
+  [9, 10, 0.5, "インナー浸透なきKPI管理→数字は追うが現場が動かない「KPI空回りリスク」"],
+  [1, 9, 0.5, "WHY未定義のままインナーBDを進める→何を体現すべきか不明確なリスク"],
+];
+
+// Zスコア計算
+function calcZ(score: number, avg: number, sd: number): number {
+  return (score - avg) / sd;
+}
+
+// CRI計算
+function calcCRI(scores: number[]): {
+  cri: number;
+  level: string;
+  pairs: { upstream: string; downstream: string; score: number; risk: string }[];
+} {
+  const pairs = CAUSAL_PAIRS.map(([ui, di, w, risk]) => {
+    const uAvg = INDUSTRY_AVG[ui];
+    const dAvg = INDUSTRY_AVG[di];
+    const uLayer = Object.values(LAYERS).find(l => l.indices.includes(ui))!;
+    const dLayer = Object.values(LAYERS).find(l => l.indices.includes(di))!;
+    const zU = calcZ(scores[ui], uAvg, uLayer.sd);
+    const zD = calcZ(scores[di], dAvg, dLayer.sd);
+    const contradictionScore = Math.max(0, zD - zU) * w;
+    return {
+      upstream: categoryNames[ui],
+      downstream: categoryNames[di],
+      score: Math.round(contradictionScore * 100) / 100,
+      risk,
+    };
+  });
+
+  const cri = Math.round(pairs.reduce((sum, p) => sum + p.score, 0) * 100) / 100;
+  const level = cri > 5.0 ? "重大な乖離リスク" : cri > 2.5 ? "要注意の乖離" : "概ね整合";
+
+  return { cri, level, pairs };
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { scores, memo, consultationMemo, businessPhase, companyName } = body;
+    const {
+      scores,
+      memo,
+      consultationMemo,
+      businessPhase,
+      companyName,
+      vision,
+      challenges,
+    } = body;
 
     if (!scores || scores.length !== 12) {
       return NextResponse.json(
@@ -32,94 +97,131 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // CRI計算
+    const criResult = calcCRI(scores);
+
+    // 層別スコア計算
+    const layerScores = Object.entries(LAYERS).map(([key, layer]) => {
+      const layerAvg =
+        layer.indices.reduce((sum, i) => sum + scores[i], 0) / layer.indices.length;
+      return `${layer.name}: ${layerAvg.toFixed(1)}点`;
+    });
+
     // スコアと項目名を整形
     const scoresWithLabels = scores
-      .map((score: number, i: number) => `${categoryNames[i]}: ${score}点`)
+      .map(
+        (score: number, i: number) =>
+          `${categoryNames[i]}: ${score}点（業界平均${INDUSTRY_AVG[i]}点）`
+      )
       .join("\n");
 
     const avgScore = (
       scores.reduce((a: number, b: number) => a + b, 0) / scores.length
     ).toFixed(1);
 
-    // Claude APIに送るプロンプト
-    const prompt = `あなたはブランディングの専門家です。以下の企業のブランドチェック診断結果を分析してください。
+    // 高リスクペアを抽出（スコア上位3件）
+    const topRiskPairs = [...criResult.pairs]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3);
+
+    const criSummary = topRiskPairs
+      .map(
+        (p, i) =>
+          `${i + 1}. 【${p.upstream}】→【${p.downstream}】 矛盾スコア:${p.score} / ${p.risk}`
+      )
+      .join("\n");
+
+    const prompt = `あなたはブランディングの専門家です。以下の企業のBrand Check診断結果を分析してください。
 
 【企業情報】
 会社名: ${companyName || "未入力"}
-ビジネスフェーズ: ${businessPhase || "未入力"}
+事業フェーズ: ${businessPhase || "未入力"}
+
+【企業理念・ビジョン】
+${memo || "記載なし"}
+
+【3〜5年後のビジョン】
+${vision || "記載なし"}
+
+【現在の課題】
+${challenges || "記載なし"}
+
+【壁打ち内容】
+${consultationMemo || "記載なし"}
+
+---
 
 【診断スコア（5点満点）】
 ${scoresWithLabels}
 平均スコア: ${avgScore}点
 
-【経営者のメモ（課題・展望）】
-${memo || "記載なし"}
-
-【当日の壁打ち内容】
-${consultationMemo || "記載なし"}
+【層別スコア】
+${layerScores.join("\n")}
 
 ---
 
-以下の項目について、丁寧かつ具体的に分析してください。ですます調を使用し、配慮のある表現を心がけてください：
+【統計的矛盾リスク分析（CRI: Contradiction Risk Index）】
+CRI総合スコア: ${criResult.cri}（判定: ${criResult.level}）
 
-1. **総合評価**: 平均スコアと全体的な状況を4-5文で評価します。メモの内容も十分に考慮し、現状の強みと今後の可能性について触れてください。
+CRIとは「川上（基盤）が弱いのに川下（実行）が高い」という自社都合評価の乖離を数値化した指標です。
+設問1→12は時計回りの因果連鎖（市場理解→戦略→実行）であり、川上の精度が低いまま川下を高評価することは市場との乖離を示します。
 
-2. **矛盾点とリスク**: スコア間の矛盾、またはスコアとメモの矛盾を3個指摘し、それぞれの矛盾から生じるリスクも含めて説明します。
-   各項目は「矛盾の指摘 → そこから生じるリスク」という流れで記述してください。
-   表現例：「〜は高評価である一方で、〜は低い点が気になります。〜という状況です。このまま進むと、〜というリスクがあります。」
+検出された主要矛盾ペア:
+${criSummary}
 
-3. **改善提案と具体的アクション**: スコアが3点以下の項目を中心に、改善が必要な領域とその具体的なアクションを**必ず3個のみ**提案します。3個を超えてはいけません。
-   各項目は「【領域名（スコア）】については、〜という状況です。〜というリスクがあります。具体的には、〜されることをお勧めします。」という流れで記述してください。
-   ※緊急度マーク（★）は自動付与されるため、記述不要です。
+---
 
-4. **3ヶ月後のアクションプラン**: 今から3ヶ月で取り組むべき具体的なアクションを1個提案します。
+以下の項目について分析してください。ですます調・配慮ある表現を使用してください。
 
-5. **6ヶ月後のアクションプラン**: 3-6ヶ月の期間で取り組むべき具体的なアクションを1個提案します。
+1. **総合評価**: 平均スコア・層別バランス・CRI判定を踏まえた全体状況を4-5文で評価してください。企業理念・ビジョン・課題の内容も十分考慮し、現状の強みと可能性に触れてください。
 
-6. **1年後のアクションプラン**: 6ヶ月-1年の期間で取り組むべき具体的なアクションを1個提案します。
+2. **矛盾点とリスク（CRIベース）**: 上記のCRI分析で検出された矛盾ペアを3個取り上げ、それぞれについて**このまま放置した場合の具体的な損失**を描写してください。
+   表現例：「ターゲットインサイトが弱いまま独自性を高評価し続けた場合、${companyName || "貴社"}の差別化は市場に刺さらず、価格競争に引き戻されるリスクがあります。」
+   ※原因説明ではなく未来の損失を具体的に描写すること。
 
-7. **事業フェーズ別アドバイス**: ${businessPhase}フェーズに特化したアドバイスを3-4文で提供します。このフェーズならではの重要なポイントを、前向きかつ具体的に示してください。
+3. **改善提案**: スコアが低い層・項目を中心に**必ず3個のみ**提案してください。
+   各項目は「【領域名（スコア点）】については、〜という状況です。〜というリスクがあります。改善の方向性としては〜が必要です。具体的な手順は壁打ちで一緒に設計します。」の流れで記述してください。
+   ※具体的なアクション手順は書かないこと。★マークは自動付与のため記述不要。
+
+4. **3ヶ月後のアクションプラン**: 今から3ヶ月で取り組むべきテーマを1個提案してください。「詳細は壁打ちで設計」という文言で締めてください。
+
+5. **6ヶ月後のアクションプラン**: 3〜6ヶ月で取り組むべきテーマを1個提案してください。「詳細は壁打ちで設計」という文言で締めてください。
+
+6. **1年後のアクションプラン**: 6ヶ月〜1年で取り組むべきテーマを1個提案してください。「詳細は壁打ちで設計」という文言で締めてください。
+
+7. **事業フェーズ別アドバイス**: ${businessPhase || "現在"}フェーズに特化したアドバイスを3〜4文で提供してください。このフェーズならではの重要ポイントを前向きかつ具体的に示してください。
 
 重要な注意事項：
-- メモの内容（課題・展望）と壁打ち内容の両方を丁寧に読み取り、経営者の想いや課題認識を尊重した分析を行うこと
-- 壁打ち内容には、相談時に出てきた新しい気づきや深い課題が含まれている可能性があるため、特に注意深く考慮すること
-- 矛盾点を指摘する際も、「〜の可能性があります」「〜と考えられます」といった配慮ある表現を使うこと
-- 断定的な表現を避け、「〜することをお勧めします」「〜に取り組まれると良いでしょう」といった提案型の表現を使うこと
-- すべての文章をですます調で統一すること
-- ポジティブな面も認めながら、建設的な改善提案を行うこと
-- 各項目で十分な量の分析を提供すること
+- 企業理念・ビジョン・課題・壁打ち内容を丁寧に読み取り、経営者の想いを尊重した分析を行うこと
+- CRIの矛盾ペアを分析の核心に置き、総合スコアだけで判断しないこと
+- 矛盾指摘は「〜の可能性があります」等の配慮ある表現を使うこと
+- 断定表現を避け、提案型の表現を使うこと
+- 全文ですます調で統一すること
+- ポジティブな面も認めながら建設的な改善提案を行うこと
 
 必ず以下のJSON形式で出力してください：
 \`\`\`json
 {
   "overallComment": "総合評価の文章",
   "contradictionsAndRisks": ["矛盾とリスク1", "矛盾とリスク2", "矛盾とリスク3"],
-  "improvementRecommendations": ["【領域名（スコア）】改善提案1", "【領域名（スコア）】改善提案2", "【領域名（スコア）】改善提案3"],
-  "actionPlan3Months": ["3ヶ月後アクション1", ],
-  "actionPlan6Months": ["6ヶ月後アクション1", ],
-  "actionPlan1Year": ["1年後アクション1", ],
+  "improvementRecommendations": ["【領域名（スコア点）】改善提案1", "【領域名（スコア点）】改善提案2", "【領域名（スコア点）】改善提案3"],
+  "actionPlan3Months": ["3ヶ月後アクション"],
+  "actionPlan6Months": ["6ヶ月後アクション"],
+  "actionPlan1Year": ["1年後アクション"],
   "phaseAdvice": "事業フェーズ別アドバイスの文章"
 }
 \`\`\``;
 
-    // Claude APIを呼び出し
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 8000,
       temperature: 0.7,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
+      messages: [{ role: "user", content: prompt }],
     });
 
-    // レスポンスからテキストを抽出
     const responseText =
       message.content[0].type === "text" ? message.content[0].text : "";
 
-    // JSONを抽出（```json と ``` の間）
     const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
     if (!jsonMatch) {
       throw new Error("AIのレスポンス形式が不正です");
@@ -128,57 +230,41 @@ ${consultationMemo || "記載なし"}
     const analysis = JSON.parse(jsonMatch[1]);
 
     // スコアに基づいて緊急度（★）を自動付与
-    if (analysis.improvementRecommendations && Array.isArray(analysis.improvementRecommendations)) {
-      // スコアと項目名のマッピング
-      const scoreMap: { [key: string]: number } = {
-        '市場理解': scores[0],
-        '競合分析': scores[1],
-        '自社分析': scores[2],
-        '価値提案': scores[3],
-        '独自性': scores[4],
-        '製品・サービス': scores[5],
-        'コミュニケーション': scores[6],
-        'インナーブランディング': scores[7],
-        'KPI管理': scores[8],
-        '成果': scores[9],
-        '知財保護': scores[10],
-        '成長意欲': scores[11],
-      };
-
-      // 各改善提案に★を付与（まだ付いていない場合）
-      analysis.improvementRecommendations = analysis.improvementRecommendations.map((item: string) => {
-        // 既に★が付いている場合はそのまま
-        if (item.match(/^★+/)) {
-          return item;
-        }
-
-        // 領域名を抽出して該当するスコアを取得
-        let score = 3; // デフォルト
-        for (const [category, categoryScore] of Object.entries(scoreMap)) {
-          if (item.includes(category) || item.includes(`【${category}`)) {
-            score = categoryScore;
-            break;
-          }
-        }
-
-        // スコアに応じて★を付与
-        let stars = '★'; // デフォルト（通常）
-        if (score <= 2) {
-          stars = '★★★'; // 最優先
-        } else if (score <= 3) {
-          stars = '★★'; // 重要
-        }
-
-        return `${stars} ${item}`;
+    if (
+      analysis.improvementRecommendations &&
+      Array.isArray(analysis.improvementRecommendations)
+    ) {
+      const scoreMap: { [key: string]: number } = {};
+      categoryNames.forEach((name, i) => {
+        scoreMap[name] = scores[i];
       });
 
-      // 緊急度順にソート（★★★ → ★★ → ★）
+      analysis.improvementRecommendations = analysis.improvementRecommendations.map(
+        (item: string) => {
+          if (item.match(/^★+/)) return item;
+
+          let score = 3;
+          for (const [category, categoryScore] of Object.entries(scoreMap)) {
+            if (item.includes(category)) {
+              score = categoryScore as number;
+              break;
+            }
+          }
+
+          const stars = score <= 2 ? "★★★" : score <= 3 ? "★★" : "★";
+          return `${stars} ${item}`;
+        }
+      );
+
       analysis.improvementRecommendations.sort((a: string, b: string) => {
-        const starsA = (a.match(/^★+/) || [''])[0].length;
-        const starsB = (b.match(/^★+/) || [''])[0].length;
-        return starsB - starsA; // 降順（多い順）
+        const starsA = (a.match(/^★+/) || [""])[0].length;
+        const starsB = (b.match(/^★+/) || [""])[0].length;
+        return starsB - starsA;
       });
     }
+
+    // CRI結果をレスポンスに追加
+    analysis.cri = criResult;
 
     return NextResponse.json(analysis);
   } catch (error) {
@@ -192,6 +278,3 @@ ${consultationMemo || "記載なし"}
     );
   }
 }
-
-
-

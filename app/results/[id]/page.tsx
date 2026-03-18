@@ -1,12 +1,25 @@
 ﻿'use client';
 
-// ビルド時の静的生成をスキップ
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createBrowserClient } from "@supabase/ssr";
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+
+// ── 型定義 ──────────────────────────────────────────
+type CRIPair = {
+  upstream: string;
+  downstream: string;
+  score: number;
+  risk: string;
+};
+
+type CRIResult = {
+  cri: number;
+  level: string;
+  pairs: CRIPair[];
+};
 
 type AIReport = {
   overallComment: string;
@@ -16,6 +29,7 @@ type AIReport = {
   actionPlan6Months: string[];
   actionPlan1Year: string[];
   phaseAdvice: string;
+  cri?: CRIResult;
 };
 
 interface SurveyResult {
@@ -32,58 +46,69 @@ interface SurveyResult {
   challenges: string[];
   other_challenge: string | null;
   consultation_memo: string | null;
-  q1_market_understanding: number;
-  q2_competitive_analysis: number;
-  q3_self_analysis: number;
-  q4_value_proposition: number;
-  q5_uniqueness: number;
-  q6_product_service: number;
-  q7_communication: number;
-  q8_inner_branding: number;
-  q9_kpi_management: number;
-  q10_results: number;
-  q11_ip_protection: number;
-  q12_growth_intent: number;
-  original_q1?: number;
-  original_q2?: number;
-  original_q3?: number;
-  original_q4?: number;
-  original_q5?: number;
-  original_q6?: number;
-  original_q7?: number;
-  original_q8?: number;
-  original_q9?: number;
-  original_q10?: number;
-  original_q11?: number;
-  original_q12?: number;
+  q1_target_insight: number;
+  q2_brand_story: number;
+  q3_brand_personality: number;
+  q4_competitive_analysis: number;
+  q5_self_analysis: number;
+  q6_value_proposition: number;
+  q7_uniqueness: number;
+  q8_product_uniqueness: number;
+  q9_communication: number;
+  q10_inner_branding: number;
+  q11_kpi: number;
+  q12_guideline: number;
   avg_score: number;
   ai_report: AIReport | null;
+  unlocked?: boolean;
 }
 
+// ── 設問定義（v2.2） ─────────────────────────────────
 const QUESTIONS = [
-  { id: 'q1_market_understanding', label: '市場理解', description: '自社の「理想的な顧客像（ターゲット）」が明確で、社内でも共有されている。' },
-  { id: 'q2_competitive_analysis', label: '競合分析', description: '主な競合と自社の違いを、言語化して説明できる。' },
-  { id: 'q3_self_analysis', label: '自社分析', description: '自社の強み・弱みを、第三者に説明できるレベルで把握している。' },
-  { id: 'q4_value_proposition', label: '価値提案', description: '自社が「誰に」「どんな価値を」「なぜ提供できるのか」が明文化されている。' },
-  { id: 'q5_uniqueness', label: '独自性', description: '競合が真似できない「独自の意味」や「世界観」がある。' },
-  { id: 'q6_product_service', label: '商品・サービス', description: '提供する商品・サービスが、ブランドの理念と整合している。' },
-  { id: 'q7_communication', label: 'コミュニケーション', description: 'ブランドのメッセージが、Web・営業・採用など全てで一貫している。' },
-  { id: 'q8_inner_branding', label: 'インナーブランディング', description: '社員が自社のブランド価値を理解し、日常業務で体現している。' },
-  { id: 'q9_kpi_management', label: 'KPI運用', description: 'ブランドに関する目標（KPI）や指標を定期的にモニタリングしている。' },
-  { id: 'q10_results', label: '成果実感', description: 'ブランド施策によって、売上・採用・顧客満足度などに変化が出ている。' },
-  { id: 'q11_ip_protection', label: '知的保護', description: 'ブランド名・ロゴ・デザインなど、法的保護（商標・特許）を意識している。' },
-  { id: 'q12_growth_intent', label: '今後の方向性', description: '自社のブランドを資産として成長させたいという意思がある。' },
+  { id: 'q1_target_insight',       label: 'ターゲット理解',          layer: 'ブランド基盤', description: '自社のターゲット顧客について、年齢・性別などの属性だけでなく、価値観・悩み・本音（インサイト）まで言語化できている。' },
+  { id: 'q2_brand_story',          label: 'ブランドストーリー／WHY',  layer: 'ブランド基盤', description: '「なぜこの事業をするのか」という創業背景・存在意義が言語化され、社内外に一貫して伝えられている。' },
+  { id: 'q3_brand_personality',    label: 'ブランドパーソナリティ',   layer: 'ブランド基盤', description: 'ブランドの性格・人格・話し方のトーンが定義され、コミュニケーション全体に一貫して反映されている。' },
+  { id: 'q4_competitive_analysis', label: '競合分析',                 layer: '戦略設計',     description: '主な競合と自社の違いを、根拠をもって言語化して説明できる。' },
+  { id: 'q5_self_analysis',        label: '自社分析',                 layer: '戦略設計',     description: '自社の強み・弱みを、第三者に説明できるレベルで把握・整理している。' },
+  { id: 'q6_value_proposition',    label: '価値提案',                 layer: '戦略設計',     description: '自社が「誰に・どんな価値を・なぜ提供できるのか」が明文化され、伝わる形になっている。' },
+  { id: 'q7_uniqueness',           label: '独自性',                   layer: '戦略設計',     description: '競合が簡単には真似できない「独自の意味・世界観・提供方法」が存在する。' },
+  { id: 'q8_product_uniqueness',   label: '商品・サービス独自性反映', layer: '実行・浸透',   description: '提供する商品・サービスが、ブランドの独自性を反映し、ペルソナの真のお困りごとを解決できている。' },
+  { id: 'q9_communication',        label: 'コミュニケーション一貫性', layer: '実行・浸透',   description: 'ブランドのメッセージが、Web・SNS・営業・採用などすべての接点で一貫している。' },
+  { id: 'q10_inner_branding',      label: 'インナーブランディング',   layer: '実行・浸透',   description: '社員がブランドの価値・理念を理解し、日常の業務や顧客対応の中で体現している。' },
+  { id: 'q11_kpi',                 label: 'KPI設定と成果確認',        layer: '実行・浸透',   description: 'ブランドに関する目標（KPI）を設定し、施策の効果を定期的に確認・改善している。' },
+  { id: 'q12_guideline',           label: 'ブランドガイドライン整備', layer: '実行・浸透',   description: 'ブランドを一貫して体現するための基準（ロゴ・カラー・言語表現・行動指針等）がガイドラインとして整備され、社内外で運用されている。' },
 ];
 
+// ── ユーティリティ ──────────────────────────────────
+function getScoreColor(score: number) {
+  if (score >= 4) return 'text-green-600 bg-green-50 border-green-200';
+  if (score >= 3) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+  return 'text-red-600 bg-red-50 border-red-200';
+}
+
+function getScoreBarColor(score: number) {
+  if (score >= 4) return 'bg-green-500';
+  if (score >= 3) return 'bg-yellow-500';
+  return 'bg-red-500';
+}
+
+function getCRIStyle(level: string) {
+  if (level.includes('重大')) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-700', badge: 'bg-red-600 text-white', bar: 'bg-red-500' };
+  if (level.includes('要注意')) return { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-700', badge: 'bg-yellow-500 text-white', bar: 'bg-yellow-400' };
+  return { bg: 'bg-green-50', border: 'border-green-400', text: 'text-green-700', badge: 'bg-green-600 text-white', bar: 'bg-green-500' };
+}
+
+// ── メインコンポーネント ─────────────────────────────
 export default function ResultPage() {
   const params = useParams();
   const [result, setResult] = useState<SurveyResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editedReport, setEditedReport] = useState<AIReport | null>(null);
-  const [originalScores, setOriginalScores] = useState<any>(null);
-  const [consultationMemo, setConsultationMemo] = useState<string>('');
+  const [consultationMemo, setConsultationMemo] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -91,78 +116,49 @@ export default function ResultPage() {
   );
 
   useEffect(() => {
-    const fetchResult = async () => {
+    if (!params.id) return;
+    // 管理者セッション確認
+    const adminSession = sessionStorage.getItem('admin_authenticated');
+    setIsAdmin(adminSession === 'true');
+    setUnlocked(adminSession === 'true');
+
+    (async () => {
       const { data, error } = await supabase
         .from('survey_results')
         .select('*')
         .eq('id', params.id)
         .single();
-
-      if (error) {
-        console.error('Error fetching result:', error);
-      } else {
+      if (!error && data) {
         setResult(data);
         setConsultationMemo(data.consultation_memo || '');
-        
-        // AI レポートがない場合は自動生成
-        if (!data.ai_report) {
-          await generateAIReport(data);
-        }
+        if (!data.ai_report) await generateAIReport(data);
       }
       setLoading(false);
-    };
-
-    if (params.id) {
-      fetchResult();
-    }
+    })();
   }, [params.id]);
 
-  async function generateAIReport(assessmentData: SurveyResult) {
+  async function generateAIReport(data: SurveyResult) {
     try {
       setGeneratingAI(true);
-
-      const response = await fetch("/api/analyze-with-ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/analyze-with-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scores: [
-            assessmentData.q1_market_understanding,
-            assessmentData.q2_competitive_analysis,
-            assessmentData.q3_self_analysis,
-            assessmentData.q4_value_proposition,
-            assessmentData.q5_uniqueness,
-            assessmentData.q6_product_service,
-            assessmentData.q7_communication,
-            assessmentData.q8_inner_branding,
-            assessmentData.q9_kpi_management,
-            assessmentData.q10_results,
-            assessmentData.q11_ip_protection,
-            assessmentData.q12_growth_intent,
-          ],
-          memo: assessmentData.memo,
-          consultationMemo: consultationMemo || assessmentData.consultation_memo,
-          businessPhase: assessmentData.business_phase,
-          companyName: assessmentData.company_name,
+          scores: QUESTIONS.map(q => (data as any)[q.id]),
+          memo: data.memo,
+          vision: data.vision_future,
+          challenges: data.challenges?.join('、'),
+          consultationMemo: consultationMemo || data.consultation_memo,
+          businessPhase: data.business_phase,
+          companyName: data.company_name,
         }),
       });
-
-      if (!response.ok) throw new Error("AI分析に失敗しました");
-
-      const aiReport = await response.json();
-
-      // データベースを更新
-      const { error: updateError } = await supabase
-        .from("survey_results")
-        .update({ ai_report: aiReport })
-        .eq("id", assessmentData.id);
-
-      if (updateError) throw updateError;
-
-      // 状態を更新
-      setResult((prev) => (prev ? { ...prev, ai_report: aiReport } : null));
+      if (!res.ok) throw new Error('AI分析に失敗しました');
+      const aiReport = await res.json();
+      await supabase.from('survey_results').update({ ai_report: aiReport }).eq('id', data.id);
+      setResult(prev => prev ? { ...prev, ai_report: aiReport } : null);
     } catch (err) {
-      console.error("Error generating AI report:", err);
-      alert("AI分析に失敗しました: " + (err as Error).message);
+      alert('AI分析エラー: ' + (err as Error).message);
     } finally {
       setGeneratingAI(false);
     }
@@ -170,23 +166,7 @@ export default function ResultPage() {
 
   function handleEdit() {
     if (result?.ai_report) {
-      // 深いコピーを作成
       setEditedReport(JSON.parse(JSON.stringify(result.ai_report)));
-      // 元のスコアを保存
-      setOriginalScores({
-        q1_market_understanding: result.q1_market_understanding,
-        q2_competitive_analysis: result.q2_competitive_analysis,
-        q3_self_analysis: result.q3_self_analysis,
-        q4_value_proposition: result.q4_value_proposition,
-        q5_uniqueness: result.q5_uniqueness,
-        q6_product_service: result.q6_product_service,
-        q7_communication: result.q7_communication,
-        q8_inner_branding: result.q8_inner_branding,
-        q9_kpi_management: result.q9_kpi_management,
-        q10_results: result.q10_results,
-        q11_ip_protection: result.q11_ip_protection,
-        q12_growth_intent: result.q12_growth_intent,
-      });
       setEditMode(true);
     }
   }
@@ -194,548 +174,236 @@ export default function ResultPage() {
   function handleCancelEdit() {
     setEditedReport(null);
     setEditMode(false);
-    if (result) {
-      setConsultationMemo(result.consultation_memo || '');
-    }
   }
 
   async function handleSaveEdit() {
     if (!editedReport || !result) return;
-
     try {
-      // スコアと壁打ちメモも保存する
-      const updatedData: any = { 
-        ai_report: editedReport,
-        consultation_memo: consultationMemo
-      };
-      
-        // 初回編集時のみ、元のスコアを保存
-        if (!result.original_q1) {
-          updatedData.original_q1 = result.q1_market_understanding;
-          updatedData.original_q2 = result.q2_competitive_analysis;
-          updatedData.original_q3 = result.q3_self_analysis;
-          updatedData.original_q4 = result.q4_value_proposition;
-          updatedData.original_q5 = result.q5_uniqueness;
-          updatedData.original_q6 = result.q6_product_service;
-          updatedData.original_q7 = result.q7_communication;
-          updatedData.original_q8 = result.q8_inner_branding;
-          updatedData.original_q9 = result.q9_kpi_management;
-          updatedData.original_q10 = result.q10_results;
-          updatedData.original_q11 = result.q11_ip_protection;
-          updatedData.original_q12 = result.q12_growth_intent;
-        }
-
-      // 編集されたスコアをデータベースに保存
-      if (editMode && result) {
-        updatedData.q1_market_understanding = parseInt((result as any).q1_market_understanding) || 0;
-        updatedData.q2_competitive_analysis = parseInt((result as any).q2_competitive_analysis) || 0;
-        updatedData.q3_self_analysis = parseInt((result as any).q3_self_analysis) || 0;
-        updatedData.q4_value_proposition = parseInt((result as any).q4_value_proposition) || 0;
-        updatedData.q5_uniqueness = parseInt((result as any).q5_uniqueness) || 0;
-        updatedData.q6_product_service = parseInt((result as any).q6_product_service) || 0;
-        updatedData.q7_communication = parseInt((result as any).q7_communication) || 0;
-        updatedData.q8_inner_branding = parseInt((result as any).q8_inner_branding) || 0;
-        updatedData.q9_kpi_management = parseInt((result as any).q9_kpi_management) || 0;
-        updatedData.q10_results = parseInt((result as any).q10_results) || 0;
-        updatedData.q11_ip_protection = parseInt((result as any).q11_ip_protection) || 0;
-        updatedData.q12_growth_intent = parseInt((result as any).q12_growth_intent) || 0;
-      }
-
-      const { error } = await supabase
-        .from("survey_results")
-        .update(updatedData)
-        .eq("id", result.id);
-
-      if (error) throw error;
-
+      await supabase.from('survey_results')
+        .update({ ai_report: editedReport, consultation_memo: consultationMemo })
+        .eq('id', result.id);
       setResult({ ...result, ai_report: editedReport, consultation_memo: consultationMemo });
       setEditMode(false);
       setEditedReport(null);
-      setOriginalScores(null);
-      alert("レポートを保存しました");
+      alert('保存しました');
     } catch (err) {
-      console.error("Error saving report:", err);
-      alert("保存に失敗しました: " + (err as Error).message);
+      alert('保存エラー: ' + (err as Error).message);
     }
-  }
-
-  async function handleResetToAI() {
-    if (!result) return;
-    
-    const confirm = window.confirm("AI生成の内容に戻しますか？編集内容は失われます。");
-    if (!confirm) return;
-
-    await generateAIReport(result);
-    setEditMode(false);
-    setEditedReport(null);
-    setOriginalScores(null);
   }
 
   function updateField(field: keyof AIReport, value: any) {
-    if (editedReport) {
-      setEditedReport({ ...editedReport, [field]: value });
-    }
+    if (editedReport) setEditedReport({ ...editedReport, [field]: value });
   }
 
   function updateArrayField(field: keyof AIReport, index: number, value: string) {
     if (editedReport && Array.isArray(editedReport[field])) {
-      const newArray = [...(editedReport[field] as string[])];
-      newArray[index] = value;
-      setEditedReport({ ...editedReport, [field]: newArray });
+      const arr = [...(editedReport[field] as string[])];
+      arr[index] = value;
+      setEditedReport({ ...editedReport, [field]: arr });
     }
   }
 
-  function updateScore(questionId: string, value: number) {
-    if (result) {
-      setResult({ ...result, [questionId]: value });
-    }
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-xl text-gray-600">読み込み中...</div>
+    </div>
+  );
 
-  function handlePrint() {
-    window.print();
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-xl text-gray-600">読み込み中...</div>
+  if (!result) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">結果が見つかりません</h1>
+        <p className="text-gray-600">指定されたIDのデータが存在しません。</p>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (!result) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">結果が見つかりません</h1>
-          <p className="text-gray-600">指定されたIDのデータが存在しません。</p>
-        </div>
-      </div>
-    );
-  }
-
-  const scores = [
-    result.q1_market_understanding,
-    result.q2_competitive_analysis,
-    result.q3_self_analysis,
-    result.q4_value_proposition,
-    result.q5_uniqueness,
-    result.q6_product_service,
-    result.q7_communication,
-    result.q8_inner_branding,
-    result.q9_kpi_management,
-    result.q10_results,
-    result.q11_ip_protection,
-    result.q12_growth_intent,
-  ];
-
-  const avgScore = Number(
-    result.avg_score || (scores.reduce((a, b) => a + b, 0) / 12)
-  ).toFixed(1);
-
-  const chartData = QUESTIONS.map((q) => {
-    const currentValue = (result as any)[q.id];
-    const originalKey = q.id.replace('q', 'original_q');
-    const originalValue = (result as any)[originalKey] || currentValue;
-    return {
-      category: q.label,
-      current: currentValue,
-      original: originalValue,
-    };
-  });
-  const getScoreColor = (score: number) => {
-    if (score >= 4) return 'text-green-600 bg-green-50';
-    if (score >= 3) return 'text-yellow-600 bg-yellow-50';
-    return 'text-red-600 bg-red-50';
-  };
-
+  const scores = QUESTIONS.map(q => (result as any)[q.id] as number);
+  const avgScore = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+  const chartData = QUESTIONS.map((q, i) => ({ category: q.label, score: scores[i] }));
+  const criData = result.ai_report?.cri;
   const displayAnalysis = editMode && editedReport ? editedReport : result.ai_report;
 
   return (
     <>
       <style jsx global>{`
         @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          @page {
-            margin: 1cm;
-          }
+          .no-print { display: none !important; }
+          body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          @page { margin: 1cm; }
         }
+        .lock-blur { filter: blur(4px); pointer-events: none; user-select: none; }
       `}</style>
 
       <div className="min-h-screen bg-gray-50 py-12 px-4">
-        <div className="max-w-5xl mx-auto">
-          {/* ヘッダーボタン */}
-          <div className="no-print mb-6 flex justify-end gap-3">
-            {!editMode ? (
-              <>
-                <button
-                  onClick={handlePrint}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  PDF印刷
-                </button>
-                <button
-                  onClick={handleEdit}
-                  disabled={!result.ai_report}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  編集
-                </button>
-                <a
-                  href="/admin/brand-check"
-                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors inline-block"
-                >
-                  管理画面に戻る
-                </a>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleResetToAI}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  AI生成に戻す
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  保存
-                </button>
-                <button
-                  onClick={handleCancelEdit}
-                  className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  キャンセル
-                </button>
-              </>
-            )}
+        <div className="max-w-4xl mx-auto">
+
+          {/* ── 管理者ボタン（管理者のみ表示） ── */}
+          {isAdmin && (
+            <div className="no-print mb-6 flex justify-end gap-3">
+              {!editMode ? (
+                <>
+                  <button onClick={() => window.print()} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">PDF印刷</button>
+                  <button onClick={handleEdit} disabled={!result.ai_report} className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">編集</button>
+                  <button onClick={() => generateAIReport(result)} className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">AI再生成</button>
+                  <a href="/admin/brand-check" className="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium inline-block">管理画面</a>
+                </>
+              ) : (
+                <>
+                  <button onClick={handleSaveEdit} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">保存</button>
+                  <button onClick={handleCancelEdit} className="px-5 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm font-medium">キャンセル</button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── ページヘッダー ── */}
+          <div className="bg-gradient-to-r from-indigo-700 to-purple-700 text-white rounded-2xl shadow-xl p-8 mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl">🔍</span>
+              <h1 className="text-2xl font-bold">ブランド診断レポート</h1>
+            </div>
+            <p className="text-indigo-200 text-sm">Brand Check Assessment Report</p>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="bg-white bg-opacity-20 rounded-lg px-4 py-2 text-center">
+                <p className="text-xs text-indigo-200">総合スコア</p>
+                <p className="text-3xl font-bold text-gray-900">{avgScore}<span className="text-lg font-normal text-gray-500"> / 5.0</span></p>
+              </div>
+              <div className="text-indigo-100 text-sm">
+                <p>{result.company_name} 御中</p>
+                <p>{new Date(result.created_at).toLocaleDateString('ja-JP')}</p>
+              </div>
+            </div>
           </div>
 
-          {/* ヘッダー */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl shadow-lg p-8 mb-8">
-            <h1 className="text-3xl font-bold mb-2">ブランドチェック診断結果</h1>
-            <p className="text-blue-100">Brand Check Assessment Report</p>
-          </div>
-
-          {/* AI生成中の表示 */}
+          {/* ── AI生成中 ── */}
           {generatingAI && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-8 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-blue-700 font-semibold">AI分析中...（10-20秒お待ちください）</p>
+            <div className="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-6 mb-8 text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+              <p className="text-indigo-700 font-semibold">AI分析中...（10〜20秒お待ちください）</p>
             </div>
           )}
 
-          {/* 基本情報 */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">基本情報</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">企業名</p>
-                <p className="text-lg font-semibold text-gray-900">{result.company_name} 御中</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">回答者</p>
-                <p className="text-lg font-semibold text-gray-900">{result.respondent_name} 様</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">業種</p>
-                <p className="text-lg font-semibold text-gray-900">{result.industry || '未回答'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">事業フェーズ</p>
-                <p className="text-lg font-semibold text-gray-900">{result.business_phase}</p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-sm text-gray-600 mb-1">回答日時</p>
-                <p className="text-lg font-semibold text-gray-900">
-                  {new Date(result.created_at).toLocaleString('ja-JP')}
-                </p>
-              </div>
+          {/* ════════════════════════════
+              STAGE 1: 全員に開示
+          ════════════════════════════ */}
+
+          {/* ── 1. 基本情報 ── */}
+          <div className="bg-white rounded-2xl shadow-md p-7 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
+              <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+              基本情報
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {[
+                { label: '企業名', value: result.company_name + ' 御中' },
+                { label: '回答者', value: result.respondent_name + ' 様' },
+                { label: '業種', value: result.industry || '未回答' },
+                { label: '事業フェーズ', value: result.business_phase },
+                { label: '回答日時', value: new Date(result.created_at).toLocaleString('ja-JP') },
+              ].map((item, i) => (
+                <div key={i} className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+                  <p className="text-sm font-semibold text-gray-800">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* 企業理念・ビジョン・課題 */}
-          {(result.mission || result.vision_future || (result.challenges && result.challenges.length > 0)) && (
-            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">企業理念・ビジョン・課題</h2>
-              
-              <div className="space-y-6">
-                {/* 企業理念 */}
-                {result.mission && (
-                  <div className="bg-purple-50 rounded-lg p-5">
-                    <h3 className="text-lg font-bold text-purple-900 mb-3 flex items-center gap-2">
-                      <span className="text-2xl">🎯</span>
-                      企業理念
-                    </h3>
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{result.mission}</p>
-                  </div>
-                )}
-
-                {/* 3〜5年後のビジョン */}
-                {result.vision_future && (
-                  <div className="bg-blue-50 rounded-lg p-5">
-                    <h3 className="text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
-                      <span className="text-2xl">🚀</span>
-                      3〜5年後のビジョン
-                    </h3>
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{result.vision_future}</p>
-                  </div>
-                )}
-
-                {/* 選択された課題 */}
-                {result.challenges && result.challenges.length > 0 && (
-                  <div className="bg-orange-50 rounded-lg p-5">
-                    <h3 className="text-lg font-bold text-orange-900 mb-3 flex items-center gap-2">
-                      <span className="text-2xl">📋</span>
-                      現在の課題
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {result.challenges.map((challenge: string, index: number) => (
-                        <span
-                          key={index}
-                          className="inline-block bg-white border-2 border-orange-300 text-orange-800 px-4 py-2 rounded-full text-sm font-medium"
-                        >
-                          {challenge}
-                        </span>
-                      ))}
-                    </div>
-                    {result.other_challenge && (
-                      <div className="mt-4 p-3 bg-white rounded border-2 border-orange-200">
-                        <p className="text-sm font-semibold text-orange-900 mb-1">その他：</p>
-                        <p className="text-gray-700">{result.other_challenge}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
+          {/* ── 2. 企業理念 ── */}
+          {result.mission && (
+            <div className="bg-white rounded-2xl shadow-md p-7 mb-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                企業理念
+              </h2>
+              <div className="bg-purple-50 border-l-4 border-purple-400 rounded-r-lg p-5">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{result.mission}</p>
               </div>
             </div>
           )}
 
-          {/* 総合スコア */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">総合スコア</h2>
-            <div className="flex items-center justify-center">
-              <div className="text-center">
-                <div className="inline-block bg-gradient-to-br from-blue-500 to-purple-600 rounded-full p-8 mb-4">
-                  <p className="text-6xl font-bold text-white">{avgScore}</p>
-                  <p className="text-xl text-blue-100">/ 5.0</p>
-                </div>
+          {/* ── 3. 3〜5年後のビジョン ── */}
+          {result.vision_future && (
+            <div className="bg-white rounded-2xl shadow-md p-7 mb-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                3〜5年後のビジョン
+              </h2>
+              <div className="bg-blue-50 border-l-4 border-blue-400 rounded-r-lg p-5">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{result.vision_future}</p>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* レイヤー別スコア分析 */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">📊 レイヤー別スコア分析</h2>
-            <p className="text-gray-600 mb-6">貴社のブランド構築状況を3つのレイヤーで分析しました</p>
-            
-            <div className="space-y-6">
-              {/* 戦略レイヤー */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6 border-l-4 border-blue-500">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-blue-900">【戦略レイヤー】 ブランドの基盤</h3>
-                  <div className="text-right">
-                    <span className="text-3xl font-bold text-blue-600">
-                      {(() => {
-                        const strategyScores = [
-                          result.q1_market_understanding,
-                          result.q2_competitive_analysis,
-                          result.q3_self_analysis,
-                          result.q4_value_proposition,
-                          result.q5_uniqueness
-                        ];
-                        const avg = strategyScores.reduce((a, b) => a + b, 0) / strategyScores.length;
-                        return avg.toFixed(1);
-                      })()}
-                    </span>
-                    <span className="text-gray-600 ml-1">点</span>
-                  </div>
-                </div>
-                <div className="w-full bg-blue-200 rounded-full h-3 mb-3">
-                  <div
-                    className="bg-blue-600 h-3 rounded-full transition-all"
-                    style={{
-                      width: `${(() => {
-                        const strategyScores = [
-                          result.q1_market_understanding,
-                          result.q2_competitive_analysis,
-                          result.q3_self_analysis,
-                          result.q4_value_proposition,
-                          result.q5_uniqueness
-                        ];
-                        const avg = strategyScores.reduce((a, b) => a + b, 0) / strategyScores.length;
-                        return (avg / 5) * 100;
-                      })()}%`
-                    }}
-                  ></div>
-                </div>
-                <p className="text-sm text-blue-800">市場理解、競合分析、自社分析、価値提案、独自性</p>
+          {/* ── 4. 現在の課題 ── */}
+          {result.challenges?.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-md p-7 mb-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                現在の課題
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {result.challenges.map((c, i) => (
+                  <span key={i} className="bg-orange-50 border border-orange-300 text-orange-800 px-4 py-2 rounded-full text-sm font-medium">{c}</span>
+                ))}
               </div>
+              {result.other_challenge && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 mb-1">その他</p>
+                  <p className="text-sm text-gray-700">{result.other_challenge}</p>
+                </div>
+              )}
+            </div>
+          )}
 
-              {/* 実行レイヤー */}
-              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-6 border-l-4 border-green-500">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-green-900">【実行レイヤー】 ブランドの実践</h3>
-                  <div className="text-right">
-                    <span className="text-3xl font-bold text-green-600">
-                      {(() => {
-                        const executionScores = [
-                          result.q6_product_service,
-                          result.q7_communication,
-                          result.q8_inner_branding,
-                          result.q9_kpi_management
-                        ];
-                        const avg = executionScores.reduce((a, b) => a + b, 0) / executionScores.length;
-                        return avg.toFixed(1);
-                      })()}
-                    </span>
-                    <span className="text-gray-600 ml-1">点</span>
-                  </div>
-                </div>
-                <div className="w-full bg-green-200 rounded-full h-3 mb-3">
-                  <div
-                    className="bg-green-600 h-3 rounded-full transition-all"
-                    style={{
-                      width: `${(() => {
-                        const executionScores = [
-                          result.q6_product_service,
-                          result.q7_communication,
-                          result.q8_inner_branding,
-                          result.q9_kpi_management
-                        ];
-                        const avg = executionScores.reduce((a, b) => a + b, 0) / executionScores.length;
-                        return (avg / 5) * 100;
-                      })()}%`
-                    }}
-                  ></div>
-                </div>
-                <p className="text-sm text-green-800">商品・サービス、コミュニケーション、インナーブランディング、KPI運用</p>
-              </div>
+          {/* ── 5. スコアシート ── */}
+          <div className="bg-white rounded-2xl shadow-md p-7 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
+              スコアシート
+            </h2>
+            <p className="text-xs text-gray-500 mb-5">設問1→12は時計回りの因果連鎖（ブランド基盤→戦略設計→実行・浸透）</p>
 
-              {/* 成果レイヤー */}
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-6 border-l-4 border-purple-500">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-purple-900">【成果レイヤー】 ブランドの成果</h3>
-                  <div className="text-right">
-                    <span className="text-3xl font-bold text-purple-600">
-                      {(() => {
-                        const resultScores = [
-                          result.q10_results,
-                          result.q11_ip_protection,
-                          result.q12_growth_intent
-                        ];
-                        const avg = resultScores.reduce((a, b) => a + b, 0) / resultScores.length;
-                        return avg.toFixed(1);
-                      })()}
-                    </span>
-                    <span className="text-gray-600 ml-1">点</span>
-                  </div>
-                </div>
-                <div className="w-full bg-purple-200 rounded-full h-3 mb-3">
-                  <div
-                    className="bg-purple-600 h-3 rounded-full transition-all"
-                    style={{
-                      width: `${(() => {
-                        const resultScores = [
-                          result.q10_results,
-                          result.q11_ip_protection,
-                          result.q12_growth_intent
-                        ];
-                        const avg = resultScores.reduce((a, b) => a + b, 0) / resultScores.length;
-                        return (avg / 5) * 100;
-                      })()}%`
-                    }}
-                  ></div>
-                </div>
-                <p className="text-sm text-purple-800">成果実感、知的保護、今後の方向性</p>
-              </div>
+            {/* 層別ラベル */}
+            <div className="flex gap-3 mb-4 flex-wrap">
+              {[
+                { label: 'ブランド基盤', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+                { label: '戦略設計',     color: 'bg-teal-100 text-teal-700 border-teal-300' },
+                { label: '実行・浸透',   color: 'bg-blue-100 text-blue-700 border-blue-300' },
+              ].map(l => (
+                <span key={l.label} className={`text-xs px-3 py-1 rounded-full border font-medium ${l.color}`}>{l.label}</span>
+              ))}
             </div>
 
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2 text-gray-900">💡 活用のポイント</h4>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>• <strong>戦略レイヤー</strong>が低い → 市場理解や競合分析から着手</li>
-                <li>• <strong>実行レイヤー</strong>が低い → 商品・サービスの改善や社内浸透を優先</li>
-                <li>• <strong>成果レイヤー</strong>が低い → KPI設定と効果測定の仕組み構築が必要</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* レーダーチャート */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">スコア分布</h2>
-            <div className="flex justify-center">
-              <ResponsiveContainer width="100%" height={400}>
-                <RadarChart data={chartData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="category" />
-                  <PolarRadiusAxis domain={[0, 5]} />
-                  <Radar
-                    name="元のスコア"
-                    dataKey="original"
-                    stroke="#DC143C"
-                    fill="#DC143C"
-                    fillOpacity={0.3}
-                  />
-                  <Radar
-                    name="現在のスコア"
-                    dataKey="current"
-                    stroke="#000080"
-                    fill="#000080"
-                    fillOpacity={0.3}
-                  /></RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* 詳細スコア */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">項目別スコア</h2>
-            <div className="space-y-4">
-              {QUESTIONS.map((question, index) => {
-                const score = (result as any)[question.id];
+            <div className="space-y-3">
+              {QUESTIONS.map((q, i) => {
+                const score = isAdmin && editMode
+                  ? (result as any)[q.id]
+                  : (result as any)[q.id] as number;
+                const layerColor =
+                  q.layer === 'ブランド基盤' ? 'bg-purple-100 text-purple-700' :
+                  q.layer === '戦略設計'     ? 'bg-teal-100 text-teal-700' :
+                                               'bg-blue-100 text-blue-700';
                 return (
-                  <div key={question.id} className="border-b border-gray-200 pb-4 last:border-b-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-gray-500">Q{index + 1}</span>
-                          <h3 className="text-lg font-bold text-gray-900">{question.label}</h3>
-                        </div>
-                        <p className="text-sm text-gray-600">{question.description}</p>
-                      </div>
-                      <div className="ml-4">
-                        {editMode ? (
-                          <input
-                            type="number"
-                            min="1"
-                            max="5"
-                            
-                            value={score}
-                            onChange={(e) => updateScore(question.id, Number(e.target.value))}
-                            className="w-20 text-2xl font-bold px-4 py-2 rounded-lg border-2 border-blue-500 text-center"
-                          />
-                        ) : (
-                          <span className={`text-2xl font-bold px-4 py-2 rounded-lg ${getScoreColor(score)}`}>
-                            {score}
-                          </span>
-                        )}
-                      </div>
+                  <div key={q.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                    <span className="text-xs text-gray-400 font-bold w-6 text-right flex-shrink-0">Q{i+1}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${layerColor}`}>{q.layer}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{q.label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{q.description}</p>
                     </div>
-                    <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full transition-all"
-                          style={{ width: `${(score / 5) * 100}%` }}
-                        />
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="w-20 bg-gray-200 rounded-full h-2">
+                        <div className={`h-2 rounded-full ${getScoreBarColor(score)}`} style={{ width: `${(score/5)*100}%` }} />
                       </div>
+                      {isAdmin && editMode ? (
+                        <input type="number" min={1} max={5} value={score}
+                          onChange={e => setResult(prev => prev ? {...prev, [q.id]: Number(e.target.value)} : null)}
+                          className="w-12 text-center font-bold border-2 border-blue-400 rounded text-sm py-0.5" />
+                      ) : (
+                        <span className={`text-sm font-bold px-2 py-0.5 rounded border ${getScoreColor(score)}`}>{score}</span>
+                      )}
                     </div>
                   </div>
                 );
@@ -743,82 +411,149 @@ export default function ResultPage() {
             </div>
           </div>
 
-          {/* 壁打ちメモ */}
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <span className="text-2xl">💬</span>
-              当日の壁打ち内容
-            </h3>
-            {editMode ? (
-              <textarea
-                value={consultationMemo}
-                onChange={(e) => setConsultationMemo(e.target.value)}
-                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={6}
-                placeholder="相談時に話した内容や気づいたことを記録してください"
-              />
-            ) : (
-              <p className="text-base text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
-                {consultationMemo || '未記入'}
-              </p>
-            )}
-            {!editMode && !consultationMemo && (
-              <p className="text-sm text-gray-500 mt-2">
-                ※ 編集モードで壁打ち内容を記録できます。記録後にAI生成すると、この内容も踏まえた分析が行われます。
-              </p>
-            )}
+          {/* ── 6. レーダーチャート ── */}
+          <div className="bg-white rounded-2xl shadow-md p-7 mb-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
+              <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">6</span>
+              スコア分布
+            </h2>
+            <ResponsiveContainer width="100%" height={380}>
+              <RadarChart data={chartData}>
+                <PolarGrid stroke="#e5e7eb" />
+                <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: '#6b7280' }} />
+                <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 9, fill: '#9ca3af' }} />
+                <Radar name="スコア" dataKey="score" stroke="#6D28D9" fill="#6D28D9" fillOpacity={0.25} strokeWidth={2} />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* 分析レポート */}
-          {displayAnalysis && (
+          {/* ── 7. CRI矛盾リスク診断 ── */}
+          {criData && (() => {
+            const s = getCRIStyle(criData.level);
+            const topPairs = [...criData.pairs].sort((a, b) => b.score - a.score).slice(0, 4);
+            return (
+              <div className={`rounded-2xl shadow-md p-7 mb-6 border-2 ${s.bg} ${s.border}`}>
+                <h2 className={`text-lg font-bold mb-2 flex items-center gap-2 ${s.text}`}>
+                  <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">7</span>
+                  矛盾リスク診断（CRI）
+                </h2>
+                <p className="text-xs text-gray-500 mb-5">「川上（基盤）が弱いのに川下（実行）を高く評価している」自社都合の盲点を数値化した指標です。</p>
+
+                {/* CRIスコア表示 */}
+                <div className="flex items-center gap-5 mb-6 bg-white rounded-xl p-5 border border-gray-100">
+                  <div className="text-center">
+                    <p className="text-xs text-gray-500 mb-1">CRI総合スコア</p>
+                    <p className={`text-5xl font-bold ${s.text}`}>{criData.cri.toFixed(2)}</p>
+                  </div>
+                  <div className="flex-1">
+                    <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold mb-2 ${s.badge}`}>{criData.level}</span>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div className={`h-3 rounded-full transition-all ${s.bar}`}
+                        style={{ width: `${Math.min((criData.cri / 8) * 100, 100)}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-400 mt-1">
+                      <span>0 整合</span><span>2.5 要注意</span><span>5.0+ 重大</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 矛盾ペア */}
+                <h3 className={`text-sm font-bold mb-3 ${s.text}`}>⚠ 検出された主要矛盾（因果連鎖の逆転）</h3>
+                <div className="space-y-3">
+                  {topPairs.map((pair, i) => (
+                    <div key={i} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.badge}`}>{i+1}</span>
+                        <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">{pair.upstream}</span>
+                        <span className="text-gray-300 text-sm">→</span>
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{pair.downstream}</span>
+                        <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded ${pair.score > 1.2 ? 'bg-red-100 text-red-700' : pair.score > 0.5 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                          乖離スコア {pair.score.toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 leading-relaxed">{pair.risk}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ロック状態のメッセージ */}
+                {!unlocked && (
+                  <div className="mt-5 bg-white rounded-xl p-5 border-2 border-dashed border-gray-300 text-center">
+                    <p className="text-sm font-bold text-gray-700 mb-1">🔒 この矛盾の「根本原因と解決策」は壁打ちセッションで解説します</p>
+                    <p className="text-xs text-gray-500">スコアと矛盾の事実はお伝えしました。なぜこうなっているのか、どう解決するかはコンサルタントと一緒に設計します。</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ════════════════════════════
+              CTA（壁打ち誘導）
+          ════════════════════════════ */}
+          {!unlocked && (
+            <div className="no-print bg-gradient-to-br from-indigo-700 to-purple-700 text-white rounded-2xl shadow-xl p-8 mb-8 text-center">
+              <div className="text-4xl mb-3">🔒</div>
+              <h2 className="text-xl font-bold mb-2">詳細分析レポートを受け取る</h2>
+              <p className="text-indigo-200 text-sm mb-2">矛盾の根本原因 / 優先改善提案（3項目） / アクションプラン / フェーズ別アドバイス</p>
+              <p className="text-indigo-300 text-xs mb-6">上記コンテンツは壁打ちセッション後に解放されます</p>
+              <a href="https://huvdesignoffice.com" target="_blank" rel="noopener noreferrer"
+                className="inline-block bg-white text-indigo-700 font-bold px-8 py-3 rounded-full hover:bg-indigo-50 transition-colors shadow-md">
+                無料壁打ちセッションを予約する →
+              </a>
+            </div>
+          )}
+
+          {/* ════════════════════════════
+              STAGE 2: 管理者のみ（解放後）
+          ════════════════════════════ */}
+          {unlocked && displayAnalysis && (
             <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-blue-600 mb-6 border-b-2 border-blue-200 pb-2">
-                分析レポート
-              </h2>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-px flex-1 bg-gray-200" />
+                <span className="text-sm font-bold text-gray-500 bg-white px-3">🔓 詳細分析レポート（壁打ち後解放）</span>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+
+              {/* 壁打ちメモ（管理者のみ） */}
+              {isAdmin && (
+                <div className="bg-gray-50 rounded-2xl border border-gray-200 p-6">
+                  <h3 className="text-sm font-bold text-gray-700 mb-3">💬 壁打ちメモ（内部記録）</h3>
+                  {editMode ? (
+                    <textarea value={consultationMemo} onChange={e => setConsultationMemo(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg text-sm" rows={5}
+                      placeholder="相談時の内容・気づきを記録" />
+                  ) : (
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap bg-white p-3 rounded-lg border border-gray-100">{consultationMemo || '未記入'}</p>
+                  )}
+                </div>
+              )}
 
               {/* 総合評価 */}
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-                <h3 className="text-xl font-bold text-blue-600 mb-2 flex items-center gap-2">
-                  <span className="text-2xl">📊</span> 総合評価
-                </h3>
-                <p className="text-sm text-blue-600 mb-4 italic">現在の立ち位置と、これから伸ばせる可能性を総合的に評価します</p>
+              <div className="bg-white rounded-2xl shadow-md p-7 border-l-4 border-indigo-400">
+                <h3 className="text-lg font-bold text-indigo-700 mb-3">📊 総合評価</h3>
                 {editMode ? (
-                  <textarea
-                    value={editedReport?.overallComment || ''}
-                    onChange={(e) => updateField('overallComment', e.target.value)}
-                    className="w-full p-4 border border-gray-300 rounded-lg"
-                    rows={6}
-                  />
+                  <textarea value={editedReport?.overallComment || ''} onChange={e => updateField('overallComment', e.target.value)}
+                    className="w-full p-4 border border-gray-300 rounded-lg" rows={6} />
                 ) : (
-                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {displayAnalysis.overallComment}
-                  </p>
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{displayAnalysis.overallComment}</p>
                 )}
               </div>
 
               {/* 矛盾点とリスク */}
-              {displayAnalysis.contradictionsAndRisks && displayAnalysis.contradictionsAndRisks.length > 0 && (
-                <div className="bg-gradient-to-r from-yellow-50 to-red-50 border-2 border-orange-300 rounded-lg p-6">
-                  <h3 className="text-xl font-bold text-orange-700 mb-2 flex items-center gap-2">
-                    <span className="text-2xl">⚠️</span> 矛盾点とリスク
-                  </h3>
-                  <p className="text-sm text-orange-600 mb-4 italic">成長の機会として捉えられる改善ポイントと、早めに対処することで回避できるリスクをお伝えします</p>
+              {displayAnalysis.contradictionsAndRisks?.length > 0 && (
+                <div className="bg-gradient-to-r from-yellow-50 to-red-50 rounded-2xl shadow-md p-7 border-2 border-orange-200">
+                  <h3 className="text-lg font-bold text-orange-700 mb-2">⚠️ 矛盾点とリスク（CRIベース）</h3>
+                  <p className="text-xs text-orange-500 mb-5">このまま放置した場合に起こりうる具体的な損失です</p>
                   <ul className="space-y-4">
-                    {displayAnalysis.contradictionsAndRisks.map((item: string, i: number) => (
-                      <li key={i} className="bg-white rounded-lg p-4 border-l-4 border-orange-500 shadow-sm">
+                    {displayAnalysis.contradictionsAndRisks.map((item, i) => (
+                      <li key={i} className="bg-white rounded-xl p-4 border-l-4 border-orange-400 shadow-sm">
                         <div className="flex items-start gap-3">
-                          <span className="bg-orange-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-bold flex-shrink-0 mt-0.5">
-                            {i + 1}
-                          </span>
+                          <span className="bg-orange-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i+1}</span>
                           {editMode ? (
-                            <textarea
-                              value={editedReport?.contradictionsAndRisks?.[i] || ''}
-                              onChange={(e) => updateArrayField('contradictionsAndRisks', i, e.target.value)}
-                              className="flex-1 p-2 border border-gray-300 rounded"
-                              rows={3}
-                            />
+                            <textarea value={editedReport?.contradictionsAndRisks?.[i] || ''} onChange={e => updateArrayField('contradictionsAndRisks', i, e.target.value)}
+                              className="flex-1 p-2 border border-gray-300 rounded text-sm" rows={3} />
                           ) : (
-                            <span className="text-gray-800 flex-1 leading-relaxed">{item}</span>
+                            <p className="text-gray-800 text-sm leading-relaxed flex-1">{item}</p>
                           )}
                         </div>
                       </li>
@@ -827,246 +562,69 @@ export default function ResultPage() {
                 </div>
               )}
 
-              {/* 改善提案と具体的アクション */}
-              {displayAnalysis.improvementRecommendations && displayAnalysis.improvementRecommendations.length > 0 && (
-                <div className="bg-white rounded-lg p-6 shadow-md border-2 border-blue-300">
-                  <h3 className="text-xl font-bold text-blue-700 mb-2 flex items-center gap-2">
-                    <span className="text-2xl">💡</span> 改善提案と具体的アクション
-                  </h3>
-                  <p className="text-sm text-blue-600 mb-4 italic">事業をさらに成長させるための、優先度の高い実践的なアクションをご提案します</p>
-                  
-                  {/* 緊急度基準の説明 */}
-                  <div className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-                    <p className="text-sm text-gray-700 mb-3">
-                      <strong className="text-blue-700">緊急度の判断基準：</strong> 
-                      事業の根幹に関わり、すぐに取り組むことで大きな成果が期待できる項目を★★★、競争力向上に直結する項目を★★、中長期的な成長に貢献する項目を★としています。
-                    </p>
-                    <div className="flex items-center gap-4 text-sm flex-wrap">
-                      <div className="flex items-center gap-1">
-                        <span className="text-red-500 font-bold">★★★</span>
-                        <span className="text-gray-700">最優先（今すぐ）</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-orange-500 font-bold">★★</span>
-                        <span className="text-gray-700">重要（3ヶ月以内）</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-yellow-500 font-bold">★</span>
-                        <span className="text-gray-700">通常（6ヶ月以内）</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {displayAnalysis.improvementRecommendations.map((item: string, i: number) => {
-                      // 緊急度を抽出（★★★、★★、★で判定）
-                      const urgencyMatch = item.match(/^(★+)/);
-                      const urgency = urgencyMatch ? urgencyMatch[1].length : 0;
-                      const content = item.replace(/^★+\s*/, '');
-                      
-                      // 緊急度に応じた色とラベル
-                      let urgencyColor = 'bg-yellow-500';
-                      let urgencyBorder = 'border-yellow-500';
-                      let urgencyBg = 'from-yellow-50 to-yellow-100';
-                      let urgencyLabel = '★ 通常';
-                      
-                      if (urgency === 3) {
-                        urgencyColor = 'bg-red-500';
-                        urgencyBorder = 'border-red-500';
-                        urgencyBg = 'from-red-50 to-red-100';
-                        urgencyLabel = '★★★ 最優先';
-                      } else if (urgency === 2) {
-                        urgencyColor = 'bg-orange-500';
-                        urgencyBorder = 'border-orange-500';
-                        urgencyBg = 'from-orange-50 to-orange-100';
-                        urgencyLabel = '★★ 重要';
-                      }
-                      
-                      return (
-                        <div key={i} className={`bg-gradient-to-r ${urgencyBg} rounded-lg p-4 border-l-4 ${urgencyBorder} shadow-sm hover:shadow-md transition-shadow`}>
-                          <div className="flex items-start gap-3">
-                            <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                              <span className={`${urgencyColor} text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold`}>
-                                {i + 1}
-                              </span>
-                              <span className={`text-xs font-bold whitespace-nowrap ${urgency === 3 ? 'text-red-600' : urgency === 2 ? 'text-orange-600' : 'text-yellow-600'}`}>
-                                {urgencyLabel}
-                              </span>
-                            </div>
-                            {editMode ? (
-                              <textarea
-                                value={editedReport?.improvementRecommendations?.[i] || ''}
-                                onChange={(e) => updateArrayField('improvementRecommendations', i, e.target.value)}
-                                className="flex-1 p-2 border border-gray-300 rounded"
-                                rows={3}
-                              />
-                            ) : (
-                              <span className="text-gray-800 leading-relaxed flex-1">{content}</span>
-                            )}
-                          </div>
+              {/* 改善提案 */}
+              {displayAnalysis.improvementRecommendations?.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-md p-7 border-l-4 border-purple-400">
+                  <h3 className="text-lg font-bold text-purple-700 mb-5">🎯 改善提案（優先3項目）</h3>
+                  <ul className="space-y-4">
+                    {displayAnalysis.improvementRecommendations.map((item, i) => (
+                      <li key={i} className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                        <div className="flex items-start gap-3">
+                          <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i+1}</span>
+                          {editMode ? (
+                            <textarea value={editedReport?.improvementRecommendations?.[i] || ''} onChange={e => updateArrayField('improvementRecommendations', i, e.target.value)}
+                              className="flex-1 p-2 border border-gray-300 rounded text-sm" rows={4} />
+                          ) : (
+                            <p className="text-gray-800 text-sm leading-relaxed flex-1">{item}</p>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
-              {/* アクションプラン - タイムライン */}
-              {displayAnalysis.actionPlan3Months && displayAnalysis.actionPlan6Months && displayAnalysis.actionPlan1Year && (
-                <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-8 border-2 border-slate-200">
-                  <h3 className="text-2xl font-bold text-slate-800 mb-2 text-center flex items-center justify-center gap-2">
-                    <span className="text-3xl">🗓️</span> アクションプラン・ロードマップ
-                  </h3>
-                  <p className="text-center text-slate-600 mb-8 italic">1年後の成長に向けて、段階的に取り組むべき具体的な施策をご提案します</p>
-                  
-                  {/* タイムライングリッド */}
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
-                    {/* 矢印（デスクトップのみ表示） */}
-                    <div className="hidden lg:block absolute top-1/2 left-1/3 transform -translate-y-1/2 text-4xl text-blue-400 z-10" style={{ marginLeft: '-1rem' }}>
-                      →
+              {/* アクションプラン */}
+              <div className="bg-white rounded-2xl shadow-md p-7 border-l-4 border-green-400">
+                <h3 className="text-lg font-bold text-green-700 mb-5">📅 アクションプラン</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[
+                    { key: 'actionPlan3Months' as keyof AIReport, label: '3ヶ月後', border: 'border-green-300', bg: 'bg-green-50', text: 'text-green-700' },
+                    { key: 'actionPlan6Months' as keyof AIReport, label: '6ヶ月後', border: 'border-teal-300',  bg: 'bg-teal-50',  text: 'text-teal-700'  },
+                    { key: 'actionPlan1Year'   as keyof AIReport, label: '1年後',   border: 'border-blue-300',  bg: 'bg-blue-50',  text: 'text-blue-700'  },
+                  ].map(({ key, label, border, bg, text }) => (
+                    <div key={key} className={`${bg} rounded-xl p-4 border ${border}`}>
+                      <h4 className={`font-bold text-sm mb-2 ${text}`}>{label}</h4>
+                      {editMode ? (
+                        <textarea value={(editedReport?.[key] as string[])?.[0] || ''} onChange={e => updateArrayField(key, 0, e.target.value)}
+                          className="w-full p-2 border border-gray-200 rounded text-xs" rows={5} />
+                      ) : (
+                        <p className="text-xs text-gray-700 leading-relaxed">{(displayAnalysis[key] as string[])?.[0]}</p>
+                      )}
                     </div>
-                    <div className="hidden lg:block absolute top-1/2 left-2/3 transform -translate-y-1/2 text-4xl text-purple-400 z-10" style={{ marginLeft: '-1rem' }}>
-                      →
-                    </div>
-
-                    {/* 3ヶ月後 */}
-                    <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg p-6 border-2 border-green-300 shadow-lg hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-center mb-4">
-                        <div className="bg-green-600 text-white rounded-full px-6 py-2 font-bold text-lg">
-                          3ヶ月後
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        {displayAnalysis.actionPlan3Months.map((action: string, i: number) => (
-                          <div key={i} className="bg-white rounded-lg p-3 border-l-4 border-green-600 shadow-sm">
-                            <div className="flex items-start gap-2">
-                              <span className="bg-green-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                                {i + 1}
-                              </span>
-                              {editMode ? (
-                                <textarea
-                                  value={editedReport?.actionPlan3Months?.[i] || ''}
-                                  onChange={(e) => updateArrayField('actionPlan3Months', i, e.target.value)}
-                                  className="flex-1 p-2 border border-gray-300 rounded text-sm"
-                                  rows={2}
-                                />
-                              ) : (
-                                <span className="text-sm text-gray-800 leading-relaxed">{action}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 6ヶ月後 */}
-                    <div className="bg-gradient-to-br from-blue-50 to-cyan-100 rounded-lg p-6 border-2 border-blue-300 shadow-lg hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-center mb-4">
-                        <div className="bg-blue-600 text-white rounded-full px-6 py-2 font-bold text-lg">
-                          6ヶ月後
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        {displayAnalysis.actionPlan6Months.map((action: string, i: number) => (
-                          <div key={i} className="bg-white rounded-lg p-3 border-l-4 border-blue-600 shadow-sm">
-                            <div className="flex items-start gap-2">
-                              <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                                {i + 1}
-                              </span>
-                              {editMode ? (
-                                <textarea
-                                  value={editedReport?.actionPlan6Months?.[i] || ''}
-                                  onChange={(e) => updateArrayField('actionPlan6Months', i, e.target.value)}
-                                  className="flex-1 p-2 border border-gray-300 rounded text-sm"
-                                  rows={2}
-                                />
-                              ) : (
-                                <span className="text-sm text-gray-800 leading-relaxed">{action}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 1年後 */}
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-100 rounded-lg p-6 border-2 border-purple-300 shadow-lg hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-center mb-4">
-                        <div className="bg-purple-600 text-white rounded-full px-6 py-2 font-bold text-lg">
-                          1年後
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        {displayAnalysis.actionPlan1Year.map((action: string, i: number) => (
-                          <div key={i} className="bg-white rounded-lg p-3 border-l-4 border-purple-600 shadow-sm">
-                            <div className="flex items-start gap-2">
-                              <span className="bg-purple-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                                {i + 1}
-                              </span>
-                              {editMode ? (
-                                <textarea
-                                  value={editedReport?.actionPlan1Year?.[i] || ''}
-                                  onChange={(e) => updateArrayField('actionPlan1Year', i, e.target.value)}
-                                  className="flex-1 p-2 border border-gray-300 rounded text-sm"
-                                  rows={2}
-                                />
-                              ) : (
-                                <span className="text-sm text-gray-800 leading-relaxed">{action}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* モバイル用の矢印 */}
-                  <div className="lg:hidden flex justify-center my-4 text-3xl text-slate-400">↓</div>
+                  ))}
                 </div>
-              )}
+              </div>
 
-              {/* 事業フェーズ別アドバイス */}
+              {/* フェーズ別アドバイス */}
               {displayAnalysis.phaseAdvice && (
-                <div className="bg-gradient-to-r from-indigo-100 to-blue-100 rounded-lg p-6 shadow-md border border-indigo-300">
-                  <h3 className="text-xl font-bold text-indigo-700 mb-2 flex items-center gap-2">
-                    <span className="text-2xl">💡</span> {result.business_phase}フェーズのアドバイス
-                  </h3>
-                  <p className="text-sm text-indigo-600 mb-4 italic">現在のフェーズならではの強みを活かし、次のステージへ進むためのアドバイスをお届けします</p>
+                <div className="bg-indigo-50 rounded-2xl shadow-md p-7 border-l-4 border-indigo-400">
+                  <h3 className="text-lg font-bold text-indigo-700 mb-3">💡 事業フェーズ別アドバイス</h3>
                   {editMode ? (
-                    <textarea
-                      value={editedReport?.phaseAdvice || ''}
-                      onChange={(e) => updateField('phaseAdvice', e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      rows={3}
-                    />
+                    <textarea value={editedReport?.phaseAdvice || ''} onChange={e => updateField('phaseAdvice', e.target.value)}
+                      className="w-full p-4 border border-gray-300 rounded-lg" rows={5} />
                   ) : (
-                    <p className="text-gray-800 leading-relaxed font-medium">{displayAnalysis.phaseAdvice}</p>
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm">{displayAnalysis.phaseAdvice}</p>
                   )}
                 </div>
               )}
             </div>
           )}
 
-          {/* メモ（回答時） */}
-          {result.memo && (
-            <div className="bg-white rounded-xl shadow-lg p-8 mb-8 mt-8">
-              <h3 className="text-xl font-bold mb-4">現状の課題・将来の展望（回答時）</h3>
-              <p className="text-base text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg">
-                {result.memo}
-              </p>
-            </div>
-          )}
-
-          {/* フッター */}
-          <div className="text-center text-gray-600 text-sm mt-12">
-            <p>© 2025 HUV DESIGN OFFICE</p>
-          </div>
         </div>
       </div>
     </>
   );
 }
-
-
-
 
 

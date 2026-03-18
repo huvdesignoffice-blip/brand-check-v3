@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +23,7 @@ export default function AdminLoginPage() {
       });
 
       if (response.ok) {
+        sessionStorage.setItem('admin_authenticated', 'true');
         router.push('/admin/brand-check');
       } else {
         setError('パスワードが正しくありません');
@@ -95,3 +96,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+

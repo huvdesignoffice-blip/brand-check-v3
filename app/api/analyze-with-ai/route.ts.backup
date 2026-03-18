@@ -1,0 +1,198 @@
+﻿import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const categoryNames = [
+  "市場理解",
+  "競合分析",
+  "自社分析",
+  "価値提案",
+  "独自性",
+  "製品・サービス",
+  "コミュニケーション",
+  "インナーブランディング",
+  "KPI管理",
+  "成果",
+  "知財保護",
+  "成長意欲",
+];
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { scores, memo, consultationMemo, businessPhase, companyName } = body;
+
+    if (!scores || scores.length !== 12) {
+      return NextResponse.json(
+        { error: "12項目のスコアが必要です" },
+        { status: 400 }
+      );
+    }
+
+    // スコアと項目名を整形
+    const scoresWithLabels = scores
+      .map((score: number, i: number) => `${categoryNames[i]}: ${score}点`)
+      .join("\n");
+
+    const avgScore = (
+      scores.reduce((a: number, b: number) => a + b, 0) / scores.length
+    ).toFixed(1);
+
+    // Claude APIに送るプロンプト
+    const prompt = `あなたはブランディングの専門家です。以下の企業のブランドチェック診断結果を分析してください。
+
+【企業情報】
+会社名: ${companyName || "未入力"}
+ビジネスフェーズ: ${businessPhase || "未入力"}
+
+【診断スコア（5点満点）】
+${scoresWithLabels}
+平均スコア: ${avgScore}点
+
+【経営者のメモ（課題・展望）】
+${memo || "記載なし"}
+
+【当日の壁打ち内容】
+${consultationMemo || "記載なし"}
+
+---
+
+以下の項目について、丁寧かつ具体的に分析してください。ですます調を使用し、配慮のある表現を心がけてください：
+
+1. **総合評価**: 平均スコアと全体的な状況を4-5文で評価します。メモの内容も十分に考慮し、現状の強みと今後の可能性について触れてください。
+
+2. **矛盾点とリスク**: スコア間の矛盾を3個指摘し、それぞれについて**未来の具体的な損失**を書きます。原因の説明ではなく、このまま放置した場合に起こる事態を具体的に描写してください。
+   表現例：「競合分析1点を放置した企業は価格競争に巻き込まれます。${companyName}の場合、紹介が止まった瞬間に新規ゼロになるリスクがあります。」
+
+3. **改善提案**: スコアが3点以下の項目を中心に、改善が必要な領域を**必ず3個のみ**提案します。3個を超えてはいけません。
+   各項目は「【領域名（スコア）】については、〜という状況です。〜というリスクがあります。改善の方向性としては〜が必要です。具体的な手順は壁打きで一緒に設計します。」という流れで記述してください。
+   ※具体的なアクション手順（例：LinkedInで発信、月1セミナー開催など）は書かないでください。
+   ※緊急度マーク（★）は自動付与されるため、記述不要です。
+
+4. **3ヶ月後のアクションプラン**: 今から3ヶ月で取り組むべきテーマを1個提案します。具体的な施策は個別に異なるため、「詳細は壁打きで設計」という文言で締めてください。
+
+5. **6ヶ月後のアクションプラン**: 3-6ヶ月の期間で取り組むべきテーマを1個提案します。具体的な施策は個別に異なるため、「詳細は壁打きで設計」という文言で締めてください。
+
+6. **1年後のアクションプラン**: 6ヶ月-1年の期間で取り組むべきテーマを1個提案します。具体的な施策は個別に異なるため、「詳細は壁打きで設計」という文言で締めてください。
+
+7. **事業フェーズ別アドバイス**: ${businessPhase}フェーズに特化したアドバイスを3-4文で提供します。このフェーズならではの重要なポイントを、前向きかつ具体的に示してください。
+
+重要な注意事項：
+- メモの内容（課題・展望）と壁打ち内容の両方を丁寧に読み取り、経営者の想いや課題認識を尊重した分析を行うこと
+- 壁打ち内容には、相談時に出てきた新しい気づきや深い課題が含まれている可能性があるため、特に注意深く考慮すること
+- 矛盾点を指摘する際も、「〜の可能性があります」「〜と考えられます」といった配慮ある表現を使うこと
+- 断定的な表現を避け、「〜することをお勧めします」「〜に取り組まれると良いでしょう」といった提案型の表現を使うこと
+- すべての文章をですます調で統一すること
+- ポジティブな面も認めながら、建設的な改善提案を行うこと
+- 各項目で十分な量の分析を提供すること
+
+必ず以下のJSON形式で出力してください：
+\`\`\`json
+{
+  "overallComment": "総合評価の文章",
+  "contradictionsAndRisks": ["矛盾とリスク1", "矛盾とリスク2", "矛盾とリスク3"],
+  "improvementRecommendations": ["【領域名（スコア）】改善提案1", "【領域名（スコア）】改善提案2", "【領域名（スコア）】改善提案3"],
+  "actionPlan3Months": ["3ヶ月後アクション1", ],
+  "actionPlan6Months": ["6ヶ月後アクション1", ],
+  "actionPlan1Year": ["1年後アクション1", ],
+  "phaseAdvice": "事業フェーズ別アドバイスの文章"
+}
+\`\`\``;
+
+    // Claude APIを呼び出し
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 8000,
+      temperature: 0.7,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    });
+
+    // レスポンスからテキストを抽出
+    const responseText =
+      message.content[0].type === "text" ? message.content[0].text : "";
+
+    // JSONを抽出（```json と ``` の間）
+    const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
+    if (!jsonMatch) {
+      throw new Error("AIのレスポンス形式が不正です");
+    }
+
+    const analysis = JSON.parse(jsonMatch[1]);
+
+    // スコアに基づいて緊急度（★）を自動付与
+    if (analysis.improvementRecommendations && Array.isArray(analysis.improvementRecommendations)) {
+      // スコアと項目名のマッピング
+      const scoreMap: { [key: string]: number } = {
+        '市場理解': scores[0],
+        '競合分析': scores[1],
+        '自社分析': scores[2],
+        '価値提案': scores[3],
+        '独自性': scores[4],
+        '製品・サービス': scores[5],
+        'コミュニケーション': scores[6],
+        'インナーブランディング': scores[7],
+        'KPI管理': scores[8],
+        '成果': scores[9],
+        '知財保護': scores[10],
+        '成長意欲': scores[11],
+      };
+
+      // 各改善提案に★を付与（まだ付いていない場合）
+      analysis.improvementRecommendations = analysis.improvementRecommendations.map((item: string) => {
+        // 既に★が付いている場合はそのまま
+        if (item.match(/^★+/)) {
+          return item;
+        }
+
+        // 領域名を抽出して該当するスコアを取得
+        let score = 3; // デフォルト
+        for (const [category, categoryScore] of Object.entries(scoreMap)) {
+          if (item.includes(category) || item.includes(`【${category}`)) {
+            score = categoryScore;
+            break;
+          }
+        }
+
+        // スコアに応じて★を付与
+        let stars = '★'; // デフォルト（通常）
+        if (score <= 2) {
+          stars = '★★★'; // 最優先
+        } else if (score <= 3) {
+          stars = '★★'; // 重要
+        }
+
+        return `${stars} ${item}`;
+      });
+
+      // 緊急度順にソート（★★★ → ★★ → ★）
+      analysis.improvementRecommendations.sort((a: string, b: string) => {
+        const starsA = (a.match(/^★+/) || [''])[0].length;
+        const starsB = (b.match(/^★+/) || [''])[0].length;
+        return starsB - starsA; // 降順（多い順）
+      });
+    }
+
+    return NextResponse.json(analysis);
+  } catch (error) {
+    console.error("AI分析エラー:", error);
+    return NextResponse.json(
+      {
+        error: "AI分析に失敗しました",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+
+

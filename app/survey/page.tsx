@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
@@ -6,18 +6,78 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 const QUESTIONS = [
-  { id: 'q1_market_understanding', label: '市場理解', description: '自社の「理想的な顧客像（ターゲット）」が明確で、社内でも共有されている。' },
-  { id: 'q2_competitive_analysis', label: '競合分析', description: '主な競合と自社の違いを、言語化して説明できる。' },
-  { id: 'q3_self_analysis', label: '自社分析', description: '自社の強み・弱みを、第三者に説明できるレベルで把握している。' },
-  { id: 'q4_value_proposition', label: '価値提案', description: '自社が「誰に」「どんな価値を」「なぜ提供できるのか」が明文化されている。' },
-  { id: 'q5_uniqueness', label: '独自性', description: '競合が真似できない「独自の意味」や「世界観」がある。' },
-  { id: 'q6_product_service', label: '商品・サービス', description: '提供する商品・サービスが、ブランドの理念と整合している。' },
-  { id: 'q7_communication', label: 'コミュニケーション', description: 'ブランドのメッセージが、Web・営業・採用など全てで一貫している。' },
-  { id: 'q8_inner_branding', label: 'インナーブランディング', description: '社員が自社のブランド価値を理解し、日常業務で体現している。' },
-  { id: 'q9_kpi_management', label: 'KPI運用', description: 'ブランドに関する目標（KPI）や指標を定期的にモニタリングしている。' },
-  { id: 'q10_results', label: '成果実感', description: 'ブランド施策によって、売上・採用・顧客満足度などに変化が出ている。' },
-  { id: 'q11_ip_protection', label: '知的保護', description: 'ブランド名・ロゴ・デザインなど、法的保護（商標・特許）を意識している。' },
-  { id: 'q12_growth_intent', label: '今後の方向性', description: '自社のブランドを資産として成長させたいという意思がある。' },
+  {
+    id: 'q1_target_insight',
+    label: 'ターゲット理解',
+    layer: 'ブランド基盤',
+    description: '自社のターゲット顧客について、年齢・性別などの属性だけでなく、価値観・悩み・本音（インサイト）まで言語化できている。',
+  },
+  {
+    id: 'q2_brand_story',
+    label: 'ブランドストーリー／WHY',
+    layer: 'ブランド基盤',
+    description: '「なぜこの事業をするのか」という創業背景・存在意義が言語化され、社内外に一貫して伝えられている。',
+  },
+  {
+    id: 'q3_brand_personality',
+    label: 'ブランドパーソナリティ',
+    layer: 'ブランド基盤',
+    description: 'ブランドの性格・人格・話し方のトーンが定義され、コミュニケーション全体に一貫して反映されている。',
+  },
+  {
+    id: 'q4_competitive_analysis',
+    label: '競合分析',
+    layer: '戦略設計',
+    description: '主な競合と自社の違いを、根拠をもって言語化して説明できる。',
+  },
+  {
+    id: 'q5_self_analysis',
+    label: '自社分析',
+    layer: '戦略設計',
+    description: '自社の強み・弱みを、第三者に説明できるレベルで把握・整理している。',
+  },
+  {
+    id: 'q6_value_proposition',
+    label: '価値提案',
+    layer: '戦略設計',
+    description: '自社が「誰に・どんな価値を・なぜ提供できるのか」が明文化され、伝わる形になっている。',
+  },
+  {
+    id: 'q7_uniqueness',
+    label: '独自性',
+    layer: '戦略設計',
+    description: '競合が簡単には真似できない「独自の意味・世界観・提供方法」が存在する。',
+  },
+  {
+    id: 'q8_product_uniqueness',
+    label: '商品・サービス独自性反映',
+    layer: '実行・浸透',
+    description: '提供する商品・サービスが、ブランドの独自性を反映し、ペルソナの真のお困りごとを解決できている。',
+  },
+  {
+    id: 'q9_communication',
+    label: 'コミュニケーション一貫性',
+    layer: '実行・浸透',
+    description: 'ブランドのメッセージが、Web・SNS・営業・採用などすべての接点で一貫している。',
+  },
+  {
+    id: 'q10_inner_branding',
+    label: 'インナーブランディング',
+    layer: '実行・浸透',
+    description: '社員がブランドの価値・理念を理解し、日常の業務や顧客対応の中で体現している。',
+  },
+  {
+    id: 'q11_kpi',
+    label: 'KPI設定と成果確認',
+    layer: '実行・浸透',
+    description: 'ブランドに関する目標（KPI）を設定し、施策の効果を定期的に確認・改善している。',
+  },
+  {
+    id: 'q12_guideline',
+    label: 'ブランドガイドライン整備',
+    layer: '実行・浸透',
+    description: 'ブランドを一貫して体現するための基準（ロゴ・カラー・言語表現・行動指針等）がガイドラインとして整備され、社内外で運用されている。',
+  },
 ];
 
 const BUSINESS_PHASES = ['構想中', '売り出し中', '成長中', '見直し中'];
@@ -163,18 +223,18 @@ export default function SurveyPage() {
   const [showOtherChallenge, setShowOtherChallenge] = useState(false);
 
   const [scores, setScores] = useState<{ [key: string]: number }>({
-    q1_market_understanding: 0,
-    q2_competitive_analysis: 0,
-    q3_self_analysis: 0,
-    q4_value_proposition: 0,
-    q5_uniqueness: 0,
-    q6_product_service: 0,
-    q7_communication: 0,
-    q8_inner_branding: 0,
-    q9_kpi_management: 0,
-    q10_results: 0,
-    q11_ip_protection: 0,
-    q12_growth_intent: 0,
+    q1_target_insight: 0,
+    q2_brand_story: 0,
+    q3_brand_personality: 0,
+    q4_competitive_analysis: 0,
+    q5_self_analysis: 0,
+    q6_value_proposition: 0,
+    q7_uniqueness: 0,
+    q8_product_uniqueness: 0,
+    q9_communication: 0,
+    q10_inner_branding: 0,
+    q11_kpi: 0,
+    q12_guideline: 0,
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -293,18 +353,18 @@ export default function SurveyPage() {
           body: JSON.stringify({
             resultId: data.id,
             scores: [
-              data.q1_market_understanding,
-              data.q2_competitive_analysis,
-              data.q3_self_analysis,
-              data.q4_value_proposition,
-              data.q5_uniqueness,
-              data.q6_product_service,
-              data.q7_communication,
-              data.q8_inner_branding,
-              data.q9_kpi_management,
-              data.q10_results,
-              data.q11_ip_protection,
-              data.q12_growth_intent,
+              data.q1_target_insight,
+              data.q2_brand_story,
+              data.q3_brand_personality,
+              data.q4_competitive_analysis,
+              data.q5_self_analysis,
+              data.q6_value_proposition,
+              data.q7_uniqueness,
+              data.q8_product_uniqueness,
+              data.q9_communication,
+              data.q10_inner_branding,
+              data.q11_kpi,
+              data.q12_guideline,
             ],
             memo: `【企業理念】\n${data.mission || '未記入'}\n\n【3〜5年後のビジョン】\n${data.vision_future || '未記入'}\n\n【課題】\n${data.challenges?.join('、') || '未選択'}${data.other_challenge ? `\nその他: ${data.other_challenge}` : ''}`,
             businessPhase: data.business_phase,
@@ -650,3 +710,4 @@ export default function SurveyPage() {
     </div>
   );
 }
+
