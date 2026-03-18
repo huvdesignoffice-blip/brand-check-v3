@@ -496,7 +496,7 @@ export default function ResultPage() {
               <h2 className="text-xl font-bold mb-2">詳細分析レポートを受け取る</h2>
               <p className="text-indigo-200 text-sm mb-2">矛盾の根本原因 / 優先改善提案（3項目） / アクションプラン / フェーズ別アドバイス</p>
               <p className="text-indigo-300 text-xs mb-6">上記コンテンツは壁打ちセッション後に解放されます</p>
-              <a href="https://huvdesignoffice.com" target="_blank" rel="noopener noreferrer"
+              <a href="https://timerex.net/s/huvdesignoffice_50ec/6cdca60c" target="_blank" rel="noopener noreferrer"
                 className="inline-block bg-white text-indigo-700 font-bold px-8 py-3 rounded-full hover:bg-indigo-50 transition-colors shadow-md">
                 無料壁打ちセッションを予約する →
               </a>
@@ -626,6 +626,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
