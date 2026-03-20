@@ -96,7 +96,7 @@ export default function PartnerDashboard() {
             <h1 className="text-2xl font-bold">パートナーダッシュボード</h1>
             <p className="text-indigo-200 text-sm mt-1">{partner?.company_name}　{partner?.name} 様</p>
           </div>
-          <button onClick={handleLogout} className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-sm font-medium">
+          <button onClick={handleLogout} className="px-4 py-2 bg-white hover:bg-gray-100 text-gray-900 rounded-lg text-sm font-medium border border-white">
             ログアウト
           </button>
         </div>
@@ -191,4 +191,5 @@ export default function PartnerDashboard() {
     </div>
   );
 }
+
 
