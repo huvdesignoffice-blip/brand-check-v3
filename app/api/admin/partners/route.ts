@@ -1,20 +1,27 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
 import * as crypto from "crypto";
+import * as nodemailer from "nodemailer";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password + "huv_salt_2025").digest("hex");
 }
 
-// パートナー一覧取得
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
+}
+
 export async function GET() {
   const { data, error } = await supabase
     .from("partners")
@@ -24,7 +31,6 @@ export async function GET() {
   return NextResponse.json({ partners: data });
 }
 
-// パートナー新規作成＋メール送信
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name, company_name } = await request.json();
@@ -38,10 +44,11 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-    // アカウント発行メール送信
-    await resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: [email],
+    // GmailでSMTP送信
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"HUV DESIGN OFFICE" <${process.env.GMAIL_USER}>`,
+      to: email,
       subject: "【Brand Check】パートナーアカウントのご案内",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -52,30 +59,24 @@ export async function POST(request: NextRequest) {
           <div style="background: #f8fafc; padding: 32px; border-radius: 0 0 12px 12px;">
             <p style="color: #1e293b;">${name} 様</p>
             <p style="color: #475569;">Brand Checkパートナーアカウントが発行されました。以下の情報でログインしてください。</p>
-
             <div style="background: white; border: 2px solid #e0e7ff; border-radius: 12px; padding: 20px; margin: 24px 0;">
               <p style="margin: 0 0 8px; color: #6b7280; font-size: 13px;">ログイン情報</p>
               <p style="margin: 0 0 6px;"><strong>メールアドレス：</strong>${email}</p>
               <p style="margin: 0;"><strong>パスワード：</strong>${password}</p>
             </div>
-
             <div style="text-align: center; margin: 32px 0;">
               <a href="https://brand-check-v3.vercel.app/partner/login"
                 style="display: inline-block; background: #4f46e5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">
                 パートナーポータルにログイン →
               </a>
             </div>
-
-            <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-top: 24px;">
+            <div style="background: #fef3c7; border-radius: 8px; padding: 16px;">
               <p style="color: #92400e; font-size: 13px; margin: 0;">
-                ⚠️ セキュリティのため、初回ログイン後にパスワードを変更することをお勧めします。
+                ⚠️ セキュリティのため、ログイン情報は第三者に共有しないでください。
               </p>
             </div>
-
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-            <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-              © 2025 HUV DESIGN OFFICE
-            </p>
+            <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2025 HUV DESIGN OFFICE</p>
           </div>
         </div>
       `,
@@ -87,7 +88,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// パートナー停止・有効化
 export async function PATCH(request: NextRequest) {
   try {
     const { id, is_active } = await request.json();
@@ -99,7 +99,6 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// パートナー削除
 export async function DELETE(request: NextRequest) {
   try {
     const { id } = await request.json();
