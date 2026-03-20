@@ -1,8 +1,6 @@
 ﻿'use client';
-
-import { useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
 const QUESTIONS = [
@@ -197,7 +195,9 @@ const CHALLENGE_CATEGORIES = [
   },
 ];
 
-export default function SurveyPage() {
+function SurveyPageInner() {
+  const searchParams = useSearchParams();
+  const partnerId = searchParams.get('partner');
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
@@ -712,5 +712,12 @@ export default function SurveyPage() {
 }
 
 
+export default function SurveyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-xl">読み込み中...</div></div>}>
+      <SurveyPageInner />
+    </Suspense>
+  );
+}
 
 
