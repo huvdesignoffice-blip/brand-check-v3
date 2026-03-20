@@ -1,8 +1,8 @@
 ﻿'use client';
 import { useState, useEffect, Suspense } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-
 const QUESTIONS = [
   {
     id: 'q1_target_insight',
