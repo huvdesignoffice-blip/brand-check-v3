@@ -100,7 +100,7 @@ export default function BrandCheckAdminPage() {
     try {
       const { data, error } = await supabase
         .from("survey_results")
-        .select("id,created_at,company_name,respondent_name,respondent_email,industry,business_phase,avg_score,stage2_unlocked,consultation_memo")
+        .select("id,created_at,company_name,respondent_name,respondent_email,industry,business_phase,avg_score,stage2_unlocked,stage3_unlocked,consultation_memo")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const d = data || [];
@@ -511,6 +511,7 @@ export default function BrandCheckAdminPage() {
     </div>
   );
 }
+
 
 
 
