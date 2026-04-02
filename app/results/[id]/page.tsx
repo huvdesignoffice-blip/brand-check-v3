@@ -61,6 +61,8 @@ interface SurveyResult {
   avg_score: number;
   ai_report: AIReport | null;
   unlocked?: boolean;
+  stage2_unlocked?: boolean;
+  stage3_unlocked?: boolean;
 }
 
 // ── 設問定義（v2.2） ─────────────────────────────────
@@ -109,6 +111,7 @@ export default function ResultPage() {
   const [editedReport, setEditedReport] = useState<AIReport | null>(null);
   const [consultationMemo, setConsultationMemo] = useState('');
   const [unlocked, setUnlocked] = useState(false);
+  const [stage3Unlocked, setStage3Unlocked] = useState(false);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -131,6 +134,7 @@ export default function ResultPage() {
         setResult(data);
         setConsultationMemo(data.consultation_memo || '');
         setUnlocked(data.stage2_unlocked === true || sessionStorage.getItem('admin_authenticated') === 'true');
+        setStage3Unlocked(data.stage3_unlocked === true || sessionStorage.getItem('admin_authenticated') === 'true');
         if (!data.ai_report) await generateAIReport(data);
       }
       setLoading(false);
@@ -510,7 +514,7 @@ export default function ResultPage() {
             <div className="space-y-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="h-px flex-1 bg-gray-200" />
-                <span className="text-sm font-bold text-gray-500 bg-white px-3">🔓 詳細分析レポート（壁打ち後解放）</span>
+                <span className="text-sm font-bold text-gray-500 bg-white px-3">🔓 壁打ち後レポート</span>
                 <div className="h-px flex-1 bg-gray-200" />
               </div>
 
@@ -540,7 +544,7 @@ export default function ResultPage() {
               </div>
 
               {/* 矛盾点とリスク */}
-              {displayAnalysis.contradictionsAndRisks?.length > 0 && (
+              {displayAnalysis.contradictionsAndRisks?.length > 0 && stage3Unlocked && (
                 <div className="bg-gradient-to-r from-yellow-50 to-red-50 rounded-2xl shadow-md p-7 border-2 border-orange-200">
                   <h3 className="text-lg font-bold text-orange-700 mb-2">⚠️ 矛盾点とリスク（CRIベース）</h3>
                   <p className="text-xs text-orange-500 mb-5">このまま放置した場合に起こりうる具体的な損失です</p>
@@ -626,6 +630,12 @@ export default function ResultPage() {
     </>
   );
 }
+
+
+
+
+
+
 
 
 

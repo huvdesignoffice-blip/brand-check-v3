@@ -13,6 +13,7 @@ type Assessment = {
   business_phase: string | null;
   avg_score: number | null;
   stage2_unlocked: boolean;
+  stage3_unlocked: boolean;
   consultation_memo: string | null;
 };
 
@@ -151,6 +152,12 @@ export default function BrandCheckAdminPage() {
     const { error } = await supabase.from("survey_results").update({ stage2_unlocked: !current }).eq("id", id);
     if (error) { alert("更新に失敗しました"); return; }
     setAssessments(prev => prev.map(a => a.id === id ? { ...a, stage2_unlocked: !current } : a));
+  }
+
+  async function toggleStage3Unlock(id: string, current: boolean) {
+    const { error } = await supabase.from("survey_results").update({ stage3_unlocked: !current }).eq("id", id);
+    if (error) { alert("更新に失敗しました"); return; }
+    setAssessments(prev => prev.map(a => a.id === id ? { ...a, stage3_unlocked: !current } : a));
   }
 
   async function saveMemo() {
@@ -343,10 +350,16 @@ export default function BrandCheckAdminPage() {
                               </span>
                             </td>
                             <td className="p-3 text-center">
-                              <button onClick={() => toggleUnlock(a.id, a.stage2_unlocked)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${a.stage2_unlocked ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                                {a.stage2_unlocked ? '🔓 解放済み' : '🔒 ロック中'}
-                              </button>
+                              <div className="flex flex-col gap-1">
+                                <button onClick={() => toggleUnlock(a.id, a.stage2_unlocked)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${a.stage2_unlocked ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                                  {a.stage2_unlocked ? '🔓 壁打ち後' : '🔒 STAGE2'}
+                                </button>
+                                <button onClick={() => toggleStage3Unlock(a.id, a.stage3_unlocked)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${a.stage3_unlocked ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
+                                  {a.stage3_unlocked ? '🎉 成約済み' : '🔒 STAGE3'}
+                                </button>
+                              </div>
                             </td>
                             <td className="p-3">
                               <button onClick={() => setMemoModal({ id: a.id, memo: a.consultation_memo || '' })}
@@ -498,3 +511,6 @@ export default function BrandCheckAdminPage() {
     </div>
   );
 }
+
+
+
