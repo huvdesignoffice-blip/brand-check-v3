@@ -423,9 +423,9 @@ export default function ResultPage() {
               <div className={`rounded-2xl shadow-md p-7 mb-6 border-2 ${s.bg} ${s.border}`}>
                 <h2 className={`text-lg font-bold mb-2 flex items-center gap-2 ${s.text}`}>
                   <span className="w-7 h-7 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">7</span>
-                  矛盾リスク診断（CRI）
+                  ブランド整合度チェック（CRI）
                 </h2>
-                <p className="text-xs text-gray-500 mb-5">「川上（基盤）が弱いのに川下（実行）を高く評価している」自社都合の盲点を数値化した指標です。</p>
+                <p className="text-xs text-gray-500 mb-5">ブランドの各要素が整合しているかを確認する指標です。スコアが高い項目は、壁打ちで一緒に整理していきましょう。</p>
                 <div className="flex items-center gap-5 mb-6 bg-white rounded-xl p-5 border border-gray-100">
                   <div className="text-center">
                     <p className="text-xs text-gray-500 mb-1">CRI総合スコア</p>
@@ -451,7 +451,7 @@ export default function ResultPage() {
                         <span className="text-gray-300 text-sm">→</span>
                         <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{pair.downstream}</span>
                         <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded ${pair.score > 1.2 ? 'bg-red-100 text-red-700' : pair.score > 0.5 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                          乖離スコア {pair.score.toFixed(2)}
+                          確認優先度 {pair.score.toFixed(2)}
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 leading-relaxed">{pair.risk}</p>
@@ -466,9 +466,9 @@ export default function ResultPage() {
           {!stage2Unlocked && (
             <div className="no-print bg-gradient-to-br from-indigo-700 to-purple-700 text-white rounded-2xl shadow-xl p-8 mb-8 text-center">
               <div className="text-4xl mb-3">📅</div>
-              <h2 className="text-xl font-bold mb-2">無料壁打ちセッションを予約する</h2>
-              <p className="text-indigo-200 text-sm mb-2">診断結果をもとに、改善の方向性を一緒に整理します。</p>
-              <p className="text-indigo-300 text-xs mb-6">所要時間：60分 / 完全無料</p>
+              <h2 className="text-xl font-bold mb-2">結果について、一緒に整理しませんか？</h2>
+              <p className="text-indigo-200 text-sm mb-2">診断結果を見ながら、現状と方向性をざっくばらんにお話しします。</p>
+              <p className="text-indigo-300 text-xs mb-6">所要時間：60分 / 完全無料 / 押し売り一切なし</p>
               <a href="https://timerex.net/s/huvdesignoffice_50ec/6cdca60c" target="_blank" rel="noopener noreferrer"
                 className="inline-block bg-white text-indigo-700 font-bold px-8 py-3 rounded-full hover:bg-indigo-50 transition-colors shadow-md">
                 無料壁打ちセッションを予約する →
@@ -502,7 +502,7 @@ export default function ResultPage() {
               {(displayAnalysis?.improvementRecommendations?.length ?? 0) > 0 && (
                 <div className="bg-white rounded-2xl shadow-md p-7 border-l-4 border-purple-400">
                   <h3 className="text-lg font-bold text-purple-700 mb-2">🎯 改善提案（優先3項目）</h3>
-                  <p className="text-xs text-gray-500 mb-5">以下の3項目が優先的に改善すべき領域として検出されました。詳細はブランド診断パッケージでご提供します。</p>
+                  <p className="text-xs text-gray-500 mb-5">壁打ちを通じて、特に一緒に取り組みたい領域が見えてきました。詳細はブランド診断パッケージでご一緒します。</p>
                   <div className="space-y-3">
                     {displayAnalysis?.improvementRecommendations?.map((item, i) => {
                       const titleMatch = item.match(/【.+?】/);
@@ -529,7 +529,7 @@ export default function ResultPage() {
                   <div className="text-4xl mb-3">📋</div>
                   <h2 className="text-xl font-bold mb-2">ブランド診断パッケージ</h2>
                   <p className="text-purple-200 text-sm mb-1">改善提案の詳細 / アクションプラン / フェーズ別アドバイス / 総合評価</p>
-                  <p className="text-purple-300 text-xs mb-5">診断結果をもとにしたオーダーメイドの戦略レポートをご提供します</p>
+                  <p className="text-purple-300 text-xs mb-5">壁打ちで見えてきた課題をもとに、貴社専用の戦略レポートをお届けします。一緒に前に進みましょう。</p>
                   <div className="bg-white bg-opacity-10 rounded-xl p-4 mb-6 inline-block">
                     <p className="text-3xl font-bold">150,000<span className="text-lg font-normal text-purple-200"> 円（税別）</span></p>
                   </div>
@@ -650,5 +650,7 @@ export default function ResultPage() {
     </>
   );
 }
+
+
 
 
