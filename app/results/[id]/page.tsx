@@ -434,7 +434,7 @@ export default function ResultPage() {
                   <div className="flex-1">
                     <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-bold mb-2 ${s.badge}`}>{criData.level}</span>
                     <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div className={`h-3 rounded-full transition-all ${s.bar}`} style={{ width: `${Math.min((criData.cri / 8) * 100, 100)}%` }} />
+                      <div className={`h-3 rounded-full transition-all ${s.bar}`} style={{ width: `${Math.min((criData.cri / 10) * 100, 100)}%` }} />
                     </div>
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
                       <span>0 整合</span><span>2.5 要注意</span><span>5.0+ 重大</span>
@@ -650,6 +650,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
