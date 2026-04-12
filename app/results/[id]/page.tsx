@@ -499,7 +499,7 @@ export default function ResultPage() {
               )}
 
               {/* 改善提案タイトルのみ */}
-              {displayAnalysis?.improvementRecommendations?.length > 0 && (
+              {(displayAnalysis?.improvementRecommendations?.length ?? 0) > 0 && (
                 <div className="bg-white rounded-2xl shadow-md p-7 border-l-4 border-purple-400">
                   <h3 className="text-lg font-bold text-purple-700 mb-2">🎯 改善提案（優先3項目）</h3>
                   <p className="text-xs text-gray-500 mb-5">以下の3項目が優先的に改善すべき領域として検出されました。詳細はブランド診断パッケージでご提供します。</p>
@@ -650,3 +650,4 @@ export default function ResultPage() {
     </>
   );
 }
+
