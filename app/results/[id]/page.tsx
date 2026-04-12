@@ -504,7 +504,7 @@ export default function ResultPage() {
                   <h3 className="text-lg font-bold text-purple-700 mb-2">🎯 改善提案（優先3項目）</h3>
                   <p className="text-xs text-gray-500 mb-5">以下の3項目が優先的に改善すべき領域として検出されました。詳細はブランド診断パッケージでご提供します。</p>
                   <div className="space-y-3">
-                    {displayAnalysis.improvementRecommendations.map((item, i) => {
+                    {displayAnalysis?.improvementRecommendations?.map((item, i) => {
                       const titleMatch = item.match(/【.+?】/);
                       const title = titleMatch ? titleMatch[0] : `改善項目 ${i + 1}`;
                       const stars = item.match(/^★+/)?.[0] || '';
@@ -650,4 +650,5 @@ export default function ResultPage() {
     </>
   );
 }
+
 
