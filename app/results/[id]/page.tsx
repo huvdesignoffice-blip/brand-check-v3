@@ -92,8 +92,8 @@ function getScoreBarColor(score: number) {
 }
 
 function getCRIStyle(level: string) {
-  if (level.includes('重大')) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-700', badge: 'bg-red-600 text-white', bar: 'bg-red-500' };
-  if (level.includes('要注意')) return { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-700', badge: 'bg-yellow-500 text-white', bar: 'bg-yellow-400' };
+  if (level.includes('優先') || level.includes('重大')) return { bg: 'bg-red-50', border: 'border-red-400', text: 'text-red-700', badge: 'bg-red-600 text-white', bar: 'bg-red-500' };
+  if (level.includes('確認') || level.includes('要注意')) return { bg: 'bg-yellow-50', border: 'border-yellow-400', text: 'text-yellow-700', badge: 'bg-yellow-500 text-white', bar: 'bg-yellow-400' };
   return { bg: 'bg-green-50', border: 'border-green-400', text: 'text-green-700', badge: 'bg-green-600 text-white', bar: 'bg-green-500' };
 }
 
@@ -650,6 +650,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
