@@ -116,8 +116,8 @@ export default function ResultPage() {
 
   useEffect(() => {
     if (!params.id) return;
-    const adminSession = sessionStorage.getItem('admin_authenticated');
-    setIsAdmin(adminSession === 'true');
+
+
 
     (async () => {
       const { data, error } = await supabase
@@ -128,8 +128,10 @@ export default function ResultPage() {
       if (!error && data) {
         setResult(data);
         setConsultationMemo(data.consultation_memo || '');
-        setStage2Unlocked(data.stage2_unlocked === true || adminSession === 'true');
-        setStage3Unlocked(data.stage3_unlocked === true || adminSession === 'true');
+        setStage2Unlocked(data.stage2_unlocked === true);
+        setStage3Unlocked(data.stage3_unlocked === true);
+        // 管理者の場合は全ステージ解放
+        fetch('/api/admin/auth').then(res => { if (res.ok) { setIsAdmin(true); setStage2Unlocked(true); setStage3Unlocked(true); } }).catch(() => {});
         if (!data.ai_report) await generateAIReport(data);
       }
       setLoading(false);
@@ -650,6 +652,11 @@ export default function ResultPage() {
     </>
   );
 }
+
+
+
+
+
 
 
 
