@@ -464,6 +464,11 @@ export default function ResultPage() {
             );
           })()}
 
+          {/* PDF用URL（印刷時のみ表示） */}
+          <div className="hidden print:block bg-gray-50 border border-gray-200 rounded-xl p-5 mb-6 text-center">
+            <p className="text-sm text-gray-600 mb-1">無料壁打ちセッションのご予約はこちら</p>
+            <p className="text-sm font-bold text-indigo-700">https://timerex.net/s/huvdesignoffice_50ec/6cdca60c</p>
+          </div>
           {/* ════════ STAGE1 CTA：壁打ち予約 ════════ */}
           {!stage2Unlocked && (
             <div className="no-print bg-gradient-to-br from-indigo-700 to-purple-700 text-white rounded-2xl shadow-xl p-8 mb-8 text-center">
@@ -525,6 +530,11 @@ export default function ResultPage() {
                 </div>
               )}
 
+              {/* PDF用URL（印刷時のみ表示） */}
+              <div className="hidden print:block bg-gray-50 border border-gray-200 rounded-xl p-5 mb-4 text-center">
+                <p className="text-sm text-gray-600 mb-1">ブランド診断パッケージのご相談はこちら</p>
+                <p className="text-sm font-bold text-purple-700">https://timerex.net/s/huvdesignoffice_50ec/6cdca60c</p>
+              </div>
               {/* STAGE2 CTA：ブランド診断パッケージ */}
               {!stage3Unlocked && (
                 <div className="no-print bg-gradient-to-br from-purple-700 to-indigo-700 text-white rounded-2xl shadow-xl p-8 text-center">
