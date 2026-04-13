@@ -131,7 +131,7 @@ export default function ResultPage() {
         setStage2Unlocked(data.stage2_unlocked === true);
         setStage3Unlocked(data.stage3_unlocked === true);
         // 管理者の場合は全ステージ解放
-        fetch('/api/admin/auth').then(res => { if (res.ok) { setIsAdmin(true); setStage2Unlocked(true); setStage3Unlocked(true); } }).catch(() => {});
+        fetch('/api/admin/auth').then(res => { if (res.ok) { setIsAdmin(true); } }).catch(() => {});
         if (!data.ai_report) await generateAIReport(data);
       }
       setLoading(false);
