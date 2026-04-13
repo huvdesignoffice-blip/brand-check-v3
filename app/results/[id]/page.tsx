@@ -439,7 +439,7 @@ export default function ResultPage() {
                       <div className={`h-3 rounded-full transition-all ${s.bar}`} style={{ width: `${Math.min((criData.cri / 10) * 100, 100)}%` }} />
                     </div>
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
-                      <span>0</span><span>2.5 要注意</span><span>5.0 重大</span><span>10.0</span>
+                      <span>0　整合</span><span>5.0</span><span>10.0　要整理</span>
                     </div>
                   </div>
                 </div>
