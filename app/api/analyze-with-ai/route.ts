@@ -21,15 +21,7 @@ const categoryNames = [
   "ブランドガイドライン整備",
 ];
 
-// 層定義
-const LAYERS = {
-  base: { name: "ブランド基盤", indices: [0, 1, 2], sd: 0.8 },
-  strategy: { name: "戦略設計", indices: [3, 4, 5, 6], sd: 0.9 },
-  execution: { name: "実行・浸透", indices: [7, 8, 9, 10, 11], sd: 0.8 },
-};
-
-// 業界平均（参考値）
-const INDUSTRY_AVG = [2.8, 2.4, 2.2, 3.1, 3.0, 2.9, 2.7, 2.9, 2.8, 2.5, 2.3, 2.6];
+// 業界平均・層定義は不要になりました（スコア絶対差方式に変更）
 
 // 因果ペア定義（川上index, 川下index, 重み, リスク説明）
 const CAUSAL_PAIRS: [number, number, number, string][] = [
@@ -44,25 +36,18 @@ const CAUSAL_PAIRS: [number, number, number, string][] = [
   [1, 9, 0.5, "WHYを起点にインナーブランディングを進めることで、組織の方向性が揃いやすくなります。"],
 ];
 
-// Zスコア計算
-function calcZ(score: number, avg: number, sd: number): number {
-  return (score - avg) / sd;
-}
-
-// CRI計算
+// CRI計算（スコア絶対差方式）
+// 川上より川下が高い場合に矛盾スコアを発生させる
 function calcCRI(scores: number[]): {
   cri: number;
   level: string;
   pairs: { upstream: string; downstream: string; score: number; risk: string }[];
 } {
   const pairs = CAUSAL_PAIRS.map(([ui, di, w, risk]) => {
-    const uAvg = INDUSTRY_AVG[ui];
-    const dAvg = INDUSTRY_AVG[di];
-    const uLayer = Object.values(LAYERS).find(l => l.indices.includes(ui))!;
-    const dLayer = Object.values(LAYERS).find(l => l.indices.includes(di))!;
-    const zU = calcZ(scores[ui], uAvg, uLayer.sd);
-    const zD = calcZ(scores[di], dAvg, dLayer.sd);
-    const contradictionScore = Math.max(0, zD - zU) * w;
+    const upstream = scores[ui];
+    const downstream = scores[di];
+    // 川下が川上より高い場合のみ矛盾スコアを発生
+    const contradictionScore = Math.max(0, downstream - upstream) * w;
     return {
       upstream: categoryNames[ui],
       downstream: categoryNames[di],
@@ -278,5 +263,6 @@ ${criSummary}
     );
   }
 }
+
 
 
