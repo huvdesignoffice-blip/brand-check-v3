@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     const scoresWithLabels = scores
       .map(
         (score: number, i: number) =>
-          `${categoryNames[i]}: ${score}点（業界平均${INDUSTRY_AVG[i]}点）`
+          `${categoryNames[i]}: ${score}点`
       )
       .join("\n");
 
@@ -268,6 +268,7 @@ ${criSummary}
     );
   }
 }
+
 
 
 
