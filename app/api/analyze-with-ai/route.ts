@@ -38,7 +38,7 @@ const CAUSAL_PAIRS: [number, number, number, string][] = [
 
 // CRI計算（スコア絶対差方式）
 // 川上より川下が高い場合に矛盾スコアを発生させる
-function calcCRI(scores: number[]): {
+function calcCRI(scores: number[], avgScore: number): {
   cri: number;
   level: string;
   pairs: { upstream: string; downstream: string; score: number; risk: string }[];
@@ -57,7 +57,22 @@ function calcCRI(scores: number[]): {
   });
 
   const cri = Math.round(pairs.reduce((sum, p) => sum + p.score, 0) * 100) / 100;
-  const level = cri > 5.0 ? "優先的に整理が必要な状態" : cri > 2.5 ? "いくつか確認したい点があります" : "概ね整合しています";
+
+  // 総合スコアとCRIを組み合わせた判定
+  let level = "";
+  if (cri <= 2.5 && avgScore >= 3.5) {
+    level = "概ね整合しています";
+  } else if (cri <= 2.5 && avgScore < 3.5) {
+    level = "土台から整備が必要な状態です";
+  } else if (cri > 2.5 && cri <= 5.0 && avgScore < 3.5) {
+    level = "矛盾があり、土台も弱い状態です";
+  } else if (cri > 2.5 && cri <= 5.0 && avgScore >= 3.5) {
+    level = "いくつか確認したい点があります";
+  } else if (cri > 5.0 && avgScore < 3.5) {
+    level = "矛盾が多く、優先的に整理が必要です";
+  } else {
+    level = "優先的に整理が必要な状態です";
+  }
 
   return { cri, level, pairs };
 }
@@ -83,7 +98,8 @@ export async function POST(request: NextRequest) {
     }
 
     // CRI計算
-    const criResult = calcCRI(scores);
+    const avgScoreNum = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
+    const criResult = calcCRI(scores, avgScoreNum);
 
     // 層別スコア計算
     const layerDefs = [
@@ -268,6 +284,10 @@ ${criSummary}
     );
   }
 }
+
+
+
+
 
 
 
