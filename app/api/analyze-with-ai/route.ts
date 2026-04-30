@@ -86,7 +86,12 @@ export async function POST(request: NextRequest) {
     const criResult = calcCRI(scores);
 
     // 層別スコア計算
-    const layerScores = Object.entries(LAYERS).map(([key, layer]) => {
+    const layerDefs = [
+      { name: "ブランド基盤", indices: [0, 1, 2] },
+      { name: "戦略設計", indices: [3, 4, 5, 6] },
+      { name: "実行・浸透", indices: [7, 8, 9, 10, 11] },
+    ];
+    const layerScores = layerDefs.map(layer => {
       const layerAvg =
         layer.indices.reduce((sum, i) => sum + scores[i], 0) / layer.indices.length;
       return `${layer.name}: ${layerAvg.toFixed(1)}点`;
@@ -263,6 +268,7 @@ ${criSummary}
     );
   }
 }
+
 
 
 
