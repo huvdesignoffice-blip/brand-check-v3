@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -170,7 +170,7 @@ export default function PartnerDashboard() {
                       </td>
                       <td className="p-3">
                         <div className="flex gap-2">
-                          <a href={`/results/${a.id}`} target="_blank"
+                          <a href={`/partner/results/${a.id}`} target="_blank"
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">
                             詳細
                           </a>
@@ -191,5 +191,6 @@ export default function PartnerDashboard() {
     </div>
   );
 }
+
 
 
