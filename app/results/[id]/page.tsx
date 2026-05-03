@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +59,7 @@ interface SurveyResult {
   q11_kpi: number;
   q12_guideline: number;
   avg_score: number;
+  revenue_scale: string;
   ai_report: AIReport | null;
   stage2_unlocked?: boolean;
   stage3_unlocked?: boolean;
@@ -298,6 +299,7 @@ export default function ResultPage() {
                 { label: '回答者', value: result.respondent_name + ' 様' },
                 { label: '業種', value: result.industry || '未回答' },
                 { label: '事業フェーズ', value: result.business_phase },
+                { label: '売上規模', value: result.revenue_scale || '未回答' },
                 { label: '回答日時', value: new Date(result.created_at).toLocaleString('ja-JP') },
               ].map((item, i) => (
                 <div key={i} className="bg-gray-50 rounded-lg p-3">
@@ -662,6 +664,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
