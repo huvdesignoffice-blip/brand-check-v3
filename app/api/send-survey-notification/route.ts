@@ -1,17 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-import { createClient } from '@supabase/supabase-js';
 import * as nodemailer from 'nodemailer';
 
 const supabase = createClient(
@@ -32,9 +20,25 @@ function createTransporter() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { company_name, respondent_name, respondent_email, avg_score, business_phase, industry, result_id } = body;
+    const { company_name, respondent_name, respondent_email, avg_score, business_phase, industry, result_id, partner_id } = body;
 
     const resultUrl = `https://brand-check-v3.vercel.app/results/${result_id}`;
+
+    // パートナー情報をsurvey_resultsに保存
+    if (partner_id) {
+      const { data: partnerData } = await supabase
+        .from("partners")
+        .select("name,company_name")
+        .eq("id", partner_id)
+        .single();
+
+      if (partnerData) {
+        await supabase.from("survey_results").update({
+          partner_name: partnerData.name,
+          partner_company: partnerData.company_name,
+        }).eq("id", result_id);
+      }
+    }
 
     const emailHtml = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -62,22 +66,6 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
-    // パートナー情報をsurvey_resultsに保存
-    if (body.partner_id) {
-      const { data: partnerData } = await supabase
-        .from("partners")
-        .select("name,company_name")
-        .eq("id", body.partner_id)
-        .single();
-
-      if (partnerData) {
-        await supabase.from("survey_results").update({
-          partner_name: partnerData.name,
-          partner_company: partnerData.company_name,
-        }).eq("id", body.result_id);
-      }
-    }
-
     const transporter = createTransporter();
 
     // マスターに必ず通知
@@ -89,11 +77,11 @@ export async function POST(request: NextRequest) {
     });
 
     // パートナー経由の場合はパートナーにも通知
-    if (body.partner_id) {
+    if (partner_id) {
       const { data: partner } = await supabase
         .from('partners')
         .select('email, name')
-        .eq('id', body.partner_id)
+        .eq('id', partner_id)
         .eq('is_active', true)
         .single();
 
@@ -113,6 +101,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-
-
