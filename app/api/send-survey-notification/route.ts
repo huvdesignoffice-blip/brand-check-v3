@@ -1,4 +1,16 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 import { createClient } from '@supabase/supabase-js';
 import * as nodemailer from 'nodemailer';
 
@@ -50,6 +62,22 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
+    // パートナー情報をsurvey_resultsに保存
+    if (body.partner_id) {
+      const { data: partnerData } = await supabase
+        .from("partners")
+        .select("name,company_name")
+        .eq("id", body.partner_id)
+        .single();
+
+      if (partnerData) {
+        await supabase.from("survey_results").update({
+          partner_name: partnerData.name,
+          partner_company: partnerData.company_name,
+        }).eq("id", body.result_id);
+      }
+    }
+
     const transporter = createTransporter();
 
     // マスターに必ず通知
@@ -85,3 +113,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+
+

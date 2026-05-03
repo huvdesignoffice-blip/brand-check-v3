@@ -1,6 +1,7 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import * as crypto from "crypto";
+import bcrypt from "bcryptjs";
 import * as nodemailer from "nodemailer";
 
 const supabase = createClient(
@@ -108,7 +109,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // パスワード更新
-    const hash = crypto.createHash("sha256").update(password + "huv_salt_2025").digest("hex");
+    const hash = await bcrypt.hash(password, 12);
     await supabase.from("partners").update({
       password_hash: hash,
       reset_token: null,
@@ -120,3 +121,4 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
+

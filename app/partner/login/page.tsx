@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -26,7 +26,11 @@ export default function PartnerLoginPage() {
       const data = await res.json();
       if (res.ok) {
         sessionStorage.setItem("partner_session", JSON.stringify(data.partner));
-        router.push("/partner/dashboard");
+        if (data.mustChangePassword) {
+          router.push("/partner/change-password");
+        } else {
+          router.push("/partner/dashboard");
+        }
       } else {
         setError(data.error || "ログインに失敗しました");
       }
@@ -141,3 +145,4 @@ export default function PartnerLoginPage() {
     </div>
   );
 }
+

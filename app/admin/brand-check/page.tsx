@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
@@ -15,6 +15,8 @@ type Assessment = {
   stage2_unlocked: boolean;
   stage3_unlocked: boolean;
   consultation_memo: string | null;
+  partner_name: string | null;
+  partner_company: string | null;
 };
 
 type Partner = {
@@ -100,7 +102,7 @@ export default function BrandCheckAdminPage() {
     try {
       const { data, error } = await supabase
         .from("survey_results")
-        .select("id,created_at,company_name,respondent_name,respondent_email,industry,business_phase,avg_score,stage2_unlocked,stage3_unlocked,consultation_memo")
+        .select("id,created_at,company_name,respondent_name,respondent_email,industry,business_phase,avg_score,stage2_unlocked,stage3_unlocked,consultation_memo,partner_name,partner_company")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const d = data || [];
@@ -328,7 +330,7 @@ export default function BrandCheckAdminPage() {
                     <table className="w-full text-sm border-collapse">
                       <thead>
                         <tr className="bg-gray-100 text-gray-700">
-                          {['日時','会社名','回答者','スコア','解放状態','壁打ちメモ','操作'].map(h => (
+                          {['日時','会社名','回答者','スコア','パートナー','解放状態','壁打ちメモ','操作'].map(h => (
                             <th key={h} className="p-3 text-left border border-gray-200 font-semibold">{h}</th>
                           ))}
                         </tr>
@@ -348,6 +350,16 @@ export default function BrandCheckAdminPage() {
                               <span className={`font-bold text-lg ${(a.avg_score || 0) >= 4 ? 'text-green-600' : (a.avg_score || 0) >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
                                 {(a.avg_score || 0).toFixed(1)}
                               </span>
+                            </td>
+                            <td className="p-3 text-xs text-gray-500">
+                              {a.partner_name ? (
+                                <div>
+                                  <p className="font-medium text-gray-700">{a.partner_name}</p>
+                                  <p className="text-gray-400">{a.partner_company}</p>
+                                </div>
+                              ) : (
+                                <span className="text-gray-300">直販</span>
+                              )}
                             </td>
                             <td className="p-3 text-center">
                               <div className="flex flex-col gap-1">
@@ -511,6 +523,10 @@ export default function BrandCheckAdminPage() {
     </div>
   );
 }
+
+
+
+
 
 
 

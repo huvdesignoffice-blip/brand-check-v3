@@ -1,16 +1,12 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import * as crypto from "crypto";
+import bcrypt from "bcryptjs";
 import * as nodemailer from "nodemailer";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password + "huv_salt_2025").digest("hex");
-}
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -25,7 +21,7 @@ function createTransporter() {
 export async function GET() {
   const { data, error } = await supabase
     .from("partners")
-    .select("id,email,name,company_name,is_active,created_at,last_login_at")
+    .select("id,email,name,company_name,is_active,created_at,last_login_at,must_change_password")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ partners: data });
@@ -34,17 +30,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name, company_name } = await request.json();
-    const hash = hashPassword(password);
+
+    // bcryptでハッシュ化
+    const hash = await bcrypt.hash(password, 12);
 
     const { data, error } = await supabase
       .from("partners")
-      .insert({ email, password_hash: hash, name, company_name })
+      .insert({ email, password_hash: hash, name, company_name, must_change_password: true })
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-    // GmailでSMTP送信
+    // アカウント発行メール送信
     const transporter = createTransporter();
     await transporter.sendMail({
       from: `"HUV DESIGN OFFICE" <${process.env.GMAIL_USER}>`,
@@ -62,18 +60,18 @@ export async function POST(request: NextRequest) {
             <div style="background: white; border: 2px solid #e0e7ff; border-radius: 12px; padding: 20px; margin: 24px 0;">
               <p style="margin: 0 0 8px; color: #6b7280; font-size: 13px;">ログイン情報</p>
               <p style="margin: 0 0 6px;"><strong>メールアドレス：</strong>${email}</p>
-              <p style="margin: 0;"><strong>パスワード：</strong>${password}</p>
+              <p style="margin: 0;"><strong>初期パスワード：</strong>${password}</p>
             </div>
-            <div style="text-align: center; margin: 32px 0;">
+            <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+              <p style="color: #92400e; font-size: 13px; margin: 0;">
+                ⚠️ 初回ログイン後、必ずパスワードを変更してください。初期パスワードはメモ後に削除することをお勧めします。
+              </p>
+            </div>
+            <div style="text-align: center; margin: 24px 0;">
               <a href="https://brand-check-v3.vercel.app/partner/login"
-                style="display: inline-block; background: #4f46e5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px;">
+                style="display: inline-block; background: #4f46e5; color: white; padding: 14px 32px; text-decoration: none; border-radius: 50px; font-weight: bold;">
                 パートナーポータルにログイン →
               </a>
-            </div>
-            <div style="background: #fef3c7; border-radius: 8px; padding: 16px;">
-              <p style="color: #92400e; font-size: 13px; margin: 0;">
-                ⚠️ セキュリティのため、ログイン情報は第三者に共有しないでください。
-              </p>
             </div>
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
             <p style="color: #94a3b8; font-size: 12px; text-align: center;">© 2025 HUV DESIGN OFFICE</p>
