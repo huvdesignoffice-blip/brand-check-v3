@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -311,9 +311,9 @@ function SurveyPageInner() {
           {
             ...formData,
             challenges: selectedChallenges,
+
             ...scores,
-          },
-        ])
+            ...(partnerId ? { partner_id: partnerId } : {}),
         .select()
         .single();
 
@@ -338,7 +338,7 @@ function SurveyPageInner() {
             business_phase: data.business_phase,
             avg_score: data.avg_score,
             result_id: data.id,
-          }),
+            partner_id: partnerId,
         });
         console.log('Email notification sent successfully');
       } catch (emailError) {
