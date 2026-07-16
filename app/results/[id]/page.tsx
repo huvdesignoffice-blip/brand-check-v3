@@ -377,7 +377,7 @@ export default function ResultPage() {
                       </div>
                       <div>
                         <div className="h-1 rounded-full" style={{background:"#e2e8f0"}}>
-                          <div className="h-1 rounded-full" style={{background:"#2563eb"}} style={{ width: `${(score / 5) * 100}%` }} />
+                          <div className="h-1 rounded-full" style={{background:"#2563eb", width: `${(score / 5) * 100}%`}} />
                         </div>
                       </div>
                     </div>
@@ -649,6 +649,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
