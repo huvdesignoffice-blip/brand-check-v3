@@ -253,8 +253,7 @@ export default function ResultPage() {
             <div className="px-8 pt-8 pb-6" style={{background:"#0f2044"}}>
               <p className="text-xs tracking-widest uppercase mb-2" style={{color:"#7a9cc8"}}>Brand Check — Assessment Report</p>
               <h1 className="text-2xl font-medium mb-1" style={{color:"#ffffff"}}>{result.company_name}</h1>
-              <p className="text-sm text-gray-500">
-                {result.respondent_name} 様　·　{new Date(result.created_at).toLocaleDateString('ja-JP')}
+              <p style={{color:"#a8c4e0",fontSize:"14px"}}>{result.respondent_name} 様　·　{new Date(result.created_at).toLocaleDateString('ja-JP')}
               </p>
             </div>
 
@@ -288,8 +287,8 @@ export default function ResultPage() {
 
             {/* 01 基本情報 */}
             <div className="px-8 py-6 border-b border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-              <h2 className="text-sm font-medium text-gray-700 mb-4">基本情報</h2>
+              <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+              <h2 className="text-base font-semibold mb-4" style={{color:"#0f2044"}}>基本情報</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
                   { label: '企業名',       value: result.company_name },
@@ -310,26 +309,26 @@ export default function ResultPage() {
             {/* 02 企業理念 */}
             {result.mission && (
               <div className="px-8 py-6 border-b border-gray-100">
-                <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-                <h2 className="text-sm font-medium text-gray-700 mb-3">企業理念</h2>
-                <p className="text-sm text-gray-700 leading-relaxed border-l-2 border-gray-200 pl-4 whitespace-pre-wrap">{result.mission}</p>
+                <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+                <h2 className="text-base font-semibold mb-3" style={{color:"#0f2044"}}>企業理念</h2>
+                <p className="text-sm leading-relaxed border-l-2 pl-4 whitespace-pre-wrap" style={{color:"#1e293b",borderColor:"#2563eb"}}>{result.mission}</p>
               </div>
             )}
 
             {/* 03 ビジョン */}
             {result.vision_future && (
               <div className="px-8 py-6 border-b border-gray-100">
-                <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-                <h2 className="text-sm font-medium text-gray-700 mb-3">3〜5年後のビジョン</h2>
-                <p className="text-sm text-gray-700 leading-relaxed border-l-2 border-gray-200 pl-4 whitespace-pre-wrap">{result.vision_future}</p>
+                <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+                <h2 className="text-base font-semibold mb-3" style={{color:"#0f2044"}}>3〜5年後のビジョン</h2>
+                <p className="text-sm leading-relaxed border-l-2 pl-4 whitespace-pre-wrap" style={{color:"#1e293b",borderColor:"#2563eb"}}>{result.vision_future}</p>
               </div>
             )}
 
             {/* 04 現在の課題 */}
             {result.challenges?.length > 0 && (
               <div className="px-8 py-6 border-b border-gray-100">
-                <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-                <h2 className="text-sm font-medium text-gray-700 mb-3">現在の課題</h2>
+                <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+                <h2 className="text-base font-semibold mb-3" style={{color:"#0f2044"}}>現在の課題</h2>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {result.challenges.map((c, i) => (
                     <span key={i} className="text-xs text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-full">{c}</span>
@@ -346,8 +345,8 @@ export default function ResultPage() {
 
             {/* 05 スコアシート */}
             <div className="px-8 py-6 border-b border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-              <h2 className="text-sm font-medium text-gray-700 mb-1">スコアシート</h2>
+              <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+              <h2 className="text-base font-semibold mb-1" style={{color:"#0f2044"}}>スコアシート</h2>
               <p className="text-xs text-gray-400 mb-4">設問1→12は時計回りの因果連鎖（ブランド基盤 → 戦略設計 → 実行・浸透）</p>
 
               {/* ヘッダー行 */}
@@ -372,12 +371,12 @@ export default function ResultPage() {
                             onChange={e => setResult(prev => prev ? {...prev, [q.id]: Number(e.target.value)} : null)}
                             className="w-12 text-center border border-gray-300 rounded text-sm py-0.5" />
                         ) : (
-                          <span className="text-sm font-medium text-gray-800">{score}<span className="text-xs text-gray-400 font-normal">/5</span></span>
+                          <span className="text-base font-bold" style={{color:"#0f2044"}}>{score}<span className="text-xs text-gray-400 font-normal">/5</span></span>
                         )}
                       </div>
                       <div>
-                        <div className="h-1 rounded-full" style={{background:"#e2e8f0"}}>
-                          <div className="h-1 rounded-full" style={{background: score <= 2 ? "#ef4444" : score === 3 ? "#eab308" : "#2563eb", width: `${(score / 5) * 100}%`}} />
+                        <div className="h-2 rounded-full" style={{background:"#e2e8f0"}}>
+                          <div className="h-2 rounded-full" style={{background: score <= 2 ? "#ef4444" : score === 3 ? "#eab308" : "#2563eb", width: `${(score / 5) * 100}%`}} />
                         </div>
                       </div>
                     </div>
@@ -388,13 +387,13 @@ export default function ResultPage() {
 
             {/* 06 スコア分布（レーダーチャート） */}
             <div className="px-8 py-6 border-b border-gray-100">
-              <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-              <h2 className="text-sm font-medium text-gray-700 mb-4">スコア分布</h2>
-              <ResponsiveContainer width="100%" height={340}>
+              <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+              <h2 className="text-base font-semibold mb-4" style={{color:"#0f2044"}}>スコア分布</h2>
+              <ResponsiveContainer width="100%" height={420}>
                 <RadarChart data={chartData}>
                   <PolarGrid stroke="#cbd5e1" />
-                  <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "#475569" }} />
-                  <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 9, fill: "#94a3b8" }} />
+                  <PolarAngleAxis dataKey="category" tick={{ fontSize: 13, fill: "#1e293b" }} />
+                  <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 11, fill: "#64748b" }} />
                   <Radar name="スコア" dataKey="score" stroke={parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) < 4 ? "#eab308" : "#2563eb"} fill={parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) < 4 ? "#eab308" : "#2563eb"} fillOpacity={0.25} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
@@ -405,8 +404,8 @@ export default function ResultPage() {
               const topPairs = [...criData.pairs].sort((a, b) => b.score - a.score).slice(0, 4);
               return (
                 <div className="px-8 py-6 border-b border-gray-100">
-                  <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
-                  <h2 className="text-sm font-medium text-gray-700 mb-1">ブランド整合度チェック（CRI）</h2>
+                  <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
+                  <h2 className="text-base font-semibold mb-1" style={{color:"#0f2044"}}>ブランド整合度チェック（CRI）</h2>
                   <p className="text-xs text-gray-400 mb-5">ブランドの各要素が整合しているかを確認する指標です。スコアが高い項目は、壁打ちで一緒に整理していきましょう。</p>
 
                   {/* CRIスコア */}
@@ -488,7 +487,7 @@ export default function ResultPage() {
                 {/* 改善提案タイトルのみ */}
                 {(displayAnalysis?.improvementRecommendations?.length ?? 0) > 0 && (
                   <div className="px-8 py-6 border-t border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
+                    <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
                     <h2 className="text-sm font-medium text-gray-700 mb-1">改善提案（優先3項目）</h2>
                     <p className="text-xs text-gray-400 mb-4">詳細はブランド診断パッケージでご提供します</p>
                     <div className="space-y-2">
@@ -539,7 +538,7 @@ export default function ResultPage() {
 
                     {/* 総合評価 */}
                     <div className="px-8 py-6 border-b border-gray-100">
-                      <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
+                      <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
                       <h2 className="text-sm font-medium text-gray-700 mb-3">総合評価</h2>
                       {editMode ? (
                         <textarea value={editedReport?.overallComment || ''} onChange={e => updateField('overallComment', e.target.value)}
@@ -552,7 +551,7 @@ export default function ResultPage() {
                     {/* 矛盾点とリスク */}
                     {displayAnalysis.contradictionsAndRisks?.length > 0 && (
                       <div className="px-8 py-6 border-b border-gray-100">
-                        <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
+                        <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
                         <h2 className="text-sm font-medium text-gray-700 mb-1">矛盾点とリスク（CRIベース）</h2>
                         <p className="text-xs text-gray-400 mb-4">このまま放置した場合に起こりうる具体的な損失です</p>
                         <div className="space-y-3">
@@ -564,7 +563,7 @@ export default function ResultPage() {
                                   <textarea value={editedReport?.contradictionsAndRisks?.[i] || ''} onChange={e => updateArrayField('contradictionsAndRisks', i, e.target.value)}
                                     className="flex-1 p-2 border border-gray-200 rounded text-sm" rows={3} />
                                 ) : (
-                                  <p className="text-sm text-gray-700 leading-relaxed flex-1">{item}</p>
+                                  <p className="text-sm leading-relaxed flex-1" style={{color:"#1e293b"}}>{item}</p>
                                 )}
                               </div>
                             </div>
@@ -576,7 +575,7 @@ export default function ResultPage() {
                     {/* 改善提案詳細 */}
                     {displayAnalysis.improvementRecommendations?.length > 0 && (
                       <div className="px-8 py-6 border-b border-gray-100">
-                        <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
+                        <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
                         <h2 className="text-sm font-medium text-gray-700 mb-4">改善提案 詳細</h2>
                         <div className="space-y-3">
                           {displayAnalysis.improvementRecommendations.map((item, i) => (
@@ -587,7 +586,7 @@ export default function ResultPage() {
                                   <textarea value={editedReport?.improvementRecommendations?.[i] || ''} onChange={e => updateArrayField('improvementRecommendations', i, e.target.value)}
                                     className="flex-1 p-2 border border-gray-200 rounded text-sm" rows={4} />
                                 ) : (
-                                  <p className="text-sm text-gray-700 leading-relaxed flex-1">{item}</p>
+                                  <p className="text-sm leading-relaxed flex-1" style={{color:"#1e293b"}}>{item}</p>
                                 )}
                               </div>
                             </div>
@@ -598,7 +597,7 @@ export default function ResultPage() {
 
                     {/* アクションプラン */}
                     <div className="px-8 py-6 border-b border-gray-100">
-                      <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
+                      <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
                       <h2 className="text-sm font-medium text-gray-700 mb-4">アクションプラン</h2>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
@@ -622,7 +621,7 @@ export default function ResultPage() {
                     {/* フェーズ別アドバイス */}
                     {displayAnalysis.phaseAdvice && (
                       <div className="px-8 py-6 border-b border-gray-100">
-                        <p className="text-xs text-gray-400 mb-1">{String(nextNum()).padStart(2, '0')}</p>
+                        <p className="text-xs font-semibold mb-1" style={{color:"#2563eb"}}>{String(nextNum()).padStart(2, '0')}</p>
                         <h2 className="text-sm font-medium text-gray-700 mb-3">事業フェーズ別アドバイス</h2>
                         {editMode ? (
                           <textarea value={editedReport?.phaseAdvice || ''} onChange={e => updateField('phaseAdvice', e.target.value)}
@@ -649,6 +648,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
