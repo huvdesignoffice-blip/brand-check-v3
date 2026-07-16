@@ -376,8 +376,8 @@ export default function ResultPage() {
                         )}
                       </div>
                       <div>
-                        <div className="h-1 bg-gray-100 rounded-full">
-                          <div className="h-1 rounded-full bg-gray-500" style={{ width: `${(score / 5) * 100}%` }} />
+                        <div className="h-1 rounded-full" style={{background:"#e2e8f0"}}>
+                          <div className="h-1 rounded-full" style={{background:"#2563eb"}} style={{ width: `${(score / 5) * 100}%` }} />
                         </div>
                       </div>
                     </div>
@@ -392,10 +392,10 @@ export default function ResultPage() {
               <h2 className="text-sm font-medium text-gray-700 mb-4">スコア分布</h2>
               <ResponsiveContainer width="100%" height={340}>
                 <RadarChart data={chartData}>
-                  <PolarGrid stroke="#e5e7eb" />
-                  <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                  <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 9, fill: '#d1d5db' }} />
-                  <Radar name="スコア" dataKey="score" stroke="#374151" fill="#374151" fillOpacity={0.12} strokeWidth={1.5} />
+                  <PolarGrid stroke="#cbd5e1" />
+                  <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "#475569" }} />
+                  <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 9, fill: "#94a3b8" }} />
+                  <Radar name="スコア" dataKey="score" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.25} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -649,6 +649,8 @@ export default function ResultPage() {
     </>
   );
 }
+
+
 
 
 
