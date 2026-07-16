@@ -264,12 +264,11 @@ export default function ResultPage() {
                 <span className="text-xs mt-0.5" style={{color:"#7a9cc8"}}>/ 5.0</span>
               </div>
               <div className="flex-1">
-                <p style={{color:"#7a9cc8",fontSize:"12px"}} className="mb-2">総合スコア</p>
-                <div className="w-full h-1.5 rounded-full mb-2" style={{background:"#1e3a6e"}}>
-                  <div className="h-1.5 rounded-full" style={{background: parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) <= 3 ? "#eab308" : "#2563eb", width: `${(parseFloat(avgScore) / 5) * 100}%`}} />
+                <p style={{color:"#a8c4e0",fontSize:"16px",fontWeight:"500"}} className="mb-2">総合スコア</p>
+                <div className="w-full h-3 rounded-full mb-3" style={{background:"#1e3a6e"}}>
+                  <div className="h-3 rounded-full" style={{background: parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) <= 3 ? "#eab308" : "#2563eb", width: `${(parseFloat(avgScore) / 5) * 100}%`}} />
                 </div>
-                <p className="text-xs text-gray-500">
-                  {parseFloat(avgScore) >= 4 ? 'ブランドの土台が整っています' :
+                <p className="text-sm" style={{color:"#ffffff"}}>{parseFloat(avgScore) >= 4 ? 'ブランドの土台が整っています' :
                    parseFloat(avgScore) >= 3 ? '一部に整備の余地があります' :
                    parseFloat(avgScore) >= 2 ? 'ブランド基盤の整備から着手が必要な段階です' :
                    '優先的な基盤整備が求められます'}
@@ -648,6 +647,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
