@@ -322,7 +322,7 @@ export default function ResultPage() {
                     <p className="text-xs text-gray-400 mb-4">詳細はブランド診断パッケージでご提供します</p>
                     <div className="space-y-2">
                       {displayAnalysis?.improvementRecommendations?.map((item, i) => {
-                        const titleMatch = item.match(/【.+?】/);
+                        const titleMatch = item.match(/^【[^】]+】/);
                         const title = titleMatch ? titleMatch[0] : `改善項目 ${i + 1}`;
                         return (
                           <div key={i} className="flex items-center gap-3 p-3.5 border border-gray-100 rounded-xl bg-gray-50">
@@ -478,7 +478,7 @@ export default function ResultPage() {
                     <p className="text-xs text-gray-400 mb-4">詳細はブランド診断パッケージでご提供します</p>
                     <div className="space-y-2">
                       {displayAnalysis?.improvementRecommendations?.map((item, i) => {
-                        const titleMatch = item.match(/【.+?】/);
+                        const titleMatch = item.match(/^【[^】]+】/);
                         const title = titleMatch ? titleMatch[0] : `改善項目 ${i + 1}`;
                         return (
                           <div key={i} className="flex items-center gap-3 p-3.5 border border-gray-100 rounded-xl bg-gray-50">
@@ -613,6 +613,8 @@ export default function ResultPage() {
     </>
   );
 }
+
+
 
 
 
