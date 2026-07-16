@@ -450,7 +450,7 @@ export default function ResultPage() {
             )}
             <div className="px-8 py-5 border-t border-gray-100 flex items-center justify-between">
               <span className="text-xs font-medium text-gray-600">HUV DESIGN OFFICE</span>
-              <span className="text-xs text-gray-400">© 2026 株式会社HUV DESIGN OFFICE</span>
+              <span className="text-xs text-gray-400">&copy; 2026 株式会社HUV DESIGN OFFICE</span>
             </div>
           </div>
         </div>
@@ -605,7 +605,7 @@ export default function ResultPage() {
               </div>
             )}
             <div className="px-8 py-4 border-t border-gray-100 " style={{background:"#0f2044"}}>
-              <p className="text-xs text-blue-200 text-center">© 2026 株式会社HUV DESIGN OFFICE</p>
+              <p className="text-xs text-blue-200 text-center">&copy; 2026 株式会社HUV DESIGN OFFICE</p>
             </div>
           </div>
         </div>
@@ -613,4 +613,6 @@ export default function ResultPage() {
     </>
   );
 }
+
+
 
