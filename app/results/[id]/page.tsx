@@ -417,7 +417,7 @@ export default function ResultPage() {
                     </div>
                     <p className="text-xs text-gray-500 mb-3">{criData.level}</p>
                     <div className="h-1.5 bg-gray-200 rounded-full mb-1">
-                      <div className="h-1.5 rounded-full" style={{background: criData.cri <= 3 ? "#ef4444" : criData.cri <= 6 ? "#eab308" : "#2563eb", width: `${Math.min((criData.cri / 10) * 100, 100)}%`}} />
+                      <div className="h-1.5 rounded-full" style={{background: criData.cri >= 7 ? "#ef4444" : criData.cri >= 4 ? "#eab308" : "#2563eb", width: `${Math.min((criData.cri / 10) * 100, 100)}%`}} />
                     </div>
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
                       <span>整合</span><span>要整理</span>
@@ -649,6 +649,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
