@@ -260,14 +260,14 @@ export default function ResultPage() {
 
             {/* 総合スコア */}
             <div className="px-8 py-6 flex items-center gap-6 border-b-2" style={{background:"#0f2044",borderColor:"#1e3a6e"}}>
-              <div className="flex-shrink-0 w-20 h-20 rounded-full border-2 flex flex-col items-center justify-center" style={{borderColor:"#3a6aae"}}>
-                <span className="text-3xl font-medium leading-none" style={{color:"#ffffff"}}>{avgScore}</span>
+              <div className="flex-shrink-0 w-28 h-28 rounded-full border-2 flex flex-col items-center justify-center" style={{borderColor:"#3a6aae"}}>
+                <span className="text-4xl font-medium leading-none" style={{color:"#ffffff"}}>{avgScore}</span>
                 <span className="text-xs mt-0.5" style={{color:"#7a9cc8"}}>/ 5.0</span>
               </div>
               <div className="flex-1">
                 <p style={{color:"#7a9cc8",fontSize:"12px"}} className="mb-2">総合スコア</p>
                 <div className="w-full h-1.5 rounded-full mb-2" style={{background:"#1e3a6e"}}>
-                  <div className="h-1.5 rounded-full" style={{background:"#93b4d4", width: `${(parseFloat(avgScore) / 5) * 100}%`}} />
+                  <div className="h-1.5 rounded-full" style={{background: parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) <= 3 ? "#eab308" : "#2563eb", width: `${(parseFloat(avgScore) / 5) * 100}%`}} />
                 </div>
                 <p className="text-xs text-gray-500">
                   {parseFloat(avgScore) >= 4 ? 'ブランドの土台が整っています' :
@@ -649,6 +649,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
