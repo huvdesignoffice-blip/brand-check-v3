@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend } from "recharts";
 
 type Assessment = {
   id: string;
@@ -17,6 +18,18 @@ type Assessment = {
   consultation_memo: string | null;
   partner_name: string | null;
   partner_company: string | null;
+  q1_target_insight?: number;
+  q2_brand_story?: number;
+  q3_brand_personality?: number;
+  q4_competitive_analysis?: number;
+  q5_self_analysis?: number;
+  q6_value_proposition?: number;
+  q7_uniqueness?: number;
+  q8_product_uniqueness?: number;
+  q9_communication?: number;
+  q10_inner_branding?: number;
+  q11_kpi?: number;
+  q12_guideline?: number;
 };
 
 type Partner = {
@@ -33,13 +46,29 @@ type SortField = 'created_at' | 'company_name' | 'avg_score';
 type SortOrder = 'asc' | 'desc';
 type Tab = 'assessments' | 'partners';
 
+const QUESTIONS = [
+  { id: 'q1_target_insight',       label: 'ターゲット理解' },
+  { id: 'q2_brand_story',          label: 'ブランドストーリー' },
+  { id: 'q3_brand_personality',    label: 'パーソナリティ' },
+  { id: 'q4_competitive_analysis', label: '競合分析' },
+  { id: 'q5_self_analysis',        label: '自社分析' },
+  { id: 'q6_value_proposition',    label: '価値提案' },
+  { id: 'q7_uniqueness',           label: '独自性' },
+  { id: 'q8_product_uniqueness',   label: '商品独自性' },
+  { id: 'q9_communication',        label: 'コミュニケーション' },
+  { id: 'q10_inner_branding',      label: 'インナーBD' },
+  { id: 'q11_kpi',                 label: 'KPI設定' },
+  { id: 'q12_guideline',           label: 'GL整備' },
+];
+
+const COMPARE_COLORS = ['#2563eb','#ef4444','#16a34a','#d97706','#7c3aed','#db2777'];
+
 export default function BrandCheckAdminPage() {
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('assessments');
 
-  // 診断データ
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +82,11 @@ export default function BrandCheckAdminPage() {
   const [memoModal, setMemoModal] = useState<{ id: string; memo: string } | null>(null);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
-  // パートナーデータ
+  // 複数選択・比較
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showCompare, setShowCompare] = useState(false);
+  const [compareData, setCompareData] = useState<Assessment[]>([]);
+
   const [partners, setPartners] = useState<Partner[]>([]);
   const [partnerLoading, setPartnerLoading] = useState(false);
   const [newPartner, setNewPartner] = useState({ email: '', password: '', name: '', company_name: '' });
@@ -102,7 +135,7 @@ export default function BrandCheckAdminPage() {
     try {
       const { data, error } = await supabase
         .from("survey_results")
-        .select("id,created_at,company_name,respondent_name,respondent_email,industry,business_phase,avg_score,stage2_unlocked,stage3_unlocked,consultation_memo,partner_name,partner_company")
+        .select("id,created_at,company_name,respondent_name,respondent_email,industry,business_phase,avg_score,stage2_unlocked,stage3_unlocked,consultation_memo,partner_name,partner_company,q1_target_insight,q2_brand_story,q3_brand_personality,q4_competitive_analysis,q5_self_analysis,q6_value_proposition,q7_uniqueness,q8_product_uniqueness,q9_communication,q10_inner_branding,q11_kpi,q12_guideline")
         .order("created_at", { ascending: false });
       if (error) throw error;
       const d = data || [];
@@ -148,6 +181,40 @@ export default function BrandCheckAdminPage() {
       return sortOrder === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
     });
     setFilteredAssessments(filtered);
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else {
+        if (next.size >= 6) { alert('最大6件まで選択できます'); return prev; }
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function selectAll() {
+    const ids = filteredAssessments.slice(0, 6).map(a => a.id);
+    setSelectedIds(new Set(ids));
+  }
+
+  function clearAll() { setSelectedIds(new Set()); }
+
+  function openCompare() {
+    const selected = assessments.filter(a => selectedIds.has(a.id));
+    setCompareData(selected);
+    setShowCompare(true);
+  }
+
+  function buildChartData(items: Assessment[]) {
+    return QUESTIONS.map(q => {
+      const entry: any = { category: q.label };
+      items.forEach((a, i) => {
+        entry[`score${i}`] = (a as any)[q.id] || 0;
+      });
+      return entry;
+    });
   }
 
   async function toggleUnlock(id: string, current: boolean) {
@@ -254,10 +321,13 @@ export default function BrandCheckAdminPage() {
     const { error } = await supabase.from("survey_results").delete().eq("id", id);
     if (error) { alert("削除失敗"); return; }
     setAssessments(prev => prev.filter(a => a.id !== id));
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
   }
 
   if (checkingAuth) return <div className="min-h-screen flex items-center justify-center"><div className="text-xl">認証確認中...</div></div>;
   if (!authenticated) return null;
+
+  const chartData = buildChartData(compareData);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -270,7 +340,7 @@ export default function BrandCheckAdminPage() {
             <div className="flex gap-3">
               {activeTab === 'assessments' && (
                 <button onClick={exportToCSV} className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium">
-                  📥 CSV ({filteredAssessments.length}件)
+                  CSV ({filteredAssessments.length}件)
                 </button>
               )}
               <button onClick={handleLogout} className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-medium">
@@ -283,11 +353,11 @@ export default function BrandCheckAdminPage() {
           <div className="flex gap-2 mb-6 border-b border-gray-200">
             <button onClick={() => setActiveTab('assessments')}
               className={`px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${activeTab === 'assessments' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-              📊 診断一覧（{assessments.length}件）
+              診断一覧（{assessments.length}件）
             </button>
             <button onClick={() => setActiveTab('partners')}
               className={`px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${activeTab === 'partners' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-              🤝 パートナー管理（{partners.length}件）
+              パートナー管理（{partners.length}件）
             </button>
           </div>
 
@@ -299,7 +369,7 @@ export default function BrandCheckAdminPage() {
               ) : (
                 <>
                   {/* フィルター */}
-                  <div className="bg-blue-50 rounded-lg p-4 mb-6 grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="bg-blue-50 rounded-lg p-4 mb-4 grid grid-cols-2 md:grid-cols-5 gap-3">
                     <input type="text" placeholder="会社名・回答者で検索" value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm col-span-2 md:col-span-1" />
@@ -325,11 +395,29 @@ export default function BrandCheckAdminPage() {
                     </button>
                   </div>
 
+                  {/* 選択・比較バー */}
+                  <div className="flex items-center gap-3 mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                    <button onClick={selectAll} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-medium">
+                      全選択（最大6件）
+                    </button>
+                    <button onClick={clearAll} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-medium">
+                      全解除
+                    </button>
+                    <span className="text-xs text-gray-500">{selectedIds.size}件選択中</span>
+                    {selectedIds.size >= 2 && (
+                      <button onClick={openCompare}
+                        className="ml-auto px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold">
+                        選択した{selectedIds.size}件を比較する →
+                      </button>
+                    )}
+                  </div>
+
                   {/* テーブル */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border-collapse">
                       <thead>
                         <tr className="bg-gray-100 text-gray-700">
+                          <th className="p-3 text-left border border-gray-200 font-semibold w-10">選択</th>
                           {['日時','会社名','回答者','スコア','パートナー','解放状態','壁打ちメモ','操作'].map(h => (
                             <th key={h} className="p-3 text-left border border-gray-200 font-semibold">{h}</th>
                           ))}
@@ -337,9 +425,13 @@ export default function BrandCheckAdminPage() {
                       </thead>
                       <tbody>
                         {filteredAssessments.length === 0 ? (
-                          <tr><td colSpan={7} className="p-6 text-center text-gray-400">データがありません</td></tr>
+                          <tr><td colSpan={9} className="p-6 text-center text-gray-400">データがありません</td></tr>
                         ) : filteredAssessments.map(a => (
-                          <tr key={a.id} className="hover:bg-gray-50 border-b border-gray-100">
+                          <tr key={a.id} className={`hover:bg-gray-50 border-b border-gray-100 ${selectedIds.has(a.id) ? 'bg-indigo-50' : ''}`}>
+                            <td className="p-3 text-center">
+                              <input type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelect(a.id)}
+                                className="w-4 h-4 accent-indigo-600 cursor-pointer" />
+                            </td>
                             <td className="p-3 text-gray-500 whitespace-nowrap">{new Date(a.created_at).toLocaleDateString('ja-JP')}</td>
                             <td className="p-3 font-medium text-gray-900">{a.company_name}</td>
                             <td className="p-3 text-gray-600">
@@ -347,7 +439,7 @@ export default function BrandCheckAdminPage() {
                               <div className="text-xs text-gray-400">{a.respondent_email}</div>
                             </td>
                             <td className="p-3 text-center">
-                              <span className={`font-bold text-lg ${(a.avg_score || 0) >= 4 ? 'text-green-600' : (a.avg_score || 0) >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
+                              <span className={`font-bold text-lg ${(a.avg_score || 0) >= 4 ? 'text-blue-600' : (a.avg_score || 0) >= 3 ? 'text-yellow-600' : 'text-red-600'}`}>
                                 {(a.avg_score || 0).toFixed(1)}
                               </span>
                             </td>
@@ -365,18 +457,18 @@ export default function BrandCheckAdminPage() {
                               <div className="flex flex-col gap-1">
                                 <button onClick={() => toggleUnlock(a.id, a.stage2_unlocked)}
                                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${a.stage2_unlocked ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
-                                  {a.stage2_unlocked ? '🔓 壁打ち後' : '🔒 STAGE2'}
+                                  {a.stage2_unlocked ? '解放済み S2' : 'ロック S2'}
                                 </button>
                                 <button onClick={() => toggleStage3Unlock(a.id, a.stage3_unlocked)}
                                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${a.stage3_unlocked ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}>
-                                  {a.stage3_unlocked ? '🎉 成約済み' : '🔒 STAGE3'}
+                                  {a.stage3_unlocked ? '成約済み S3' : 'ロック S3'}
                                 </button>
                               </div>
                             </td>
                             <td className="p-3">
                               <button onClick={() => setMemoModal({ id: a.id, memo: a.consultation_memo || '' })}
                                 className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-medium">
-                                {a.consultation_memo ? '📝 編集' : '📝 追加'}
+                                {a.consultation_memo ? '編集' : '追加'}
                               </button>
                             </td>
                             <td className="p-3">
@@ -385,7 +477,7 @@ export default function BrandCheckAdminPage() {
                                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">詳細</a>
                                 <button onClick={() => sendReportEmail(a)} disabled={sendingEmail === a.id || !a.respondent_email}
                                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium disabled:opacity-40">
-                                  {sendingEmail === a.id ? '送信中...' : '📧 送信'}
+                                  {sendingEmail === a.id ? '送信中...' : '送信'}
                                 </button>
                                 <button onClick={() => handleDelete(a.id)}
                                   className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium">削除</button>
@@ -408,11 +500,9 @@ export default function BrandCheckAdminPage() {
                 <p className="text-sm text-gray-500">パートナーアカウントの発行・管理を行います</p>
                 <button onClick={() => setShowCreateForm(!showCreateForm)}
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold">
-                  ＋ 新規アカウント発行
+                  + 新規アカウント発行
                 </button>
               </div>
-
-              {/* 新規作成フォーム */}
               {showCreateForm && (
                 <div className="bg-indigo-50 rounded-xl p-6 mb-6 border border-indigo-200">
                   <h3 className="font-bold text-indigo-900 mb-4">新規パートナーアカウント</h3>
@@ -448,8 +538,6 @@ export default function BrandCheckAdminPage() {
                   </div>
                 </div>
               )}
-
-              {/* パートナー一覧 */}
               {partnerLoading ? (
                 <div className="text-center py-12 text-gray-400">読み込み中...</div>
               ) : partners.length === 0 ? (
@@ -475,7 +563,7 @@ export default function BrandCheckAdminPage() {
                           <td className="p-3 text-gray-600">{p.email}</td>
                           <td className="p-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                              {p.is_active ? '✓ 有効' : '✗ 停止中'}
+                              {p.is_active ? '有効' : '停止中'}
                             </span>
                           </td>
                           <td className="p-3 text-gray-500 text-xs">
@@ -503,19 +591,105 @@ export default function BrandCheckAdminPage() {
         </div>
       </div>
 
-      {/* 壁打ちメモモーダル */}
+      {/* ── 比較モーダル ── */}
+      {showCompare && compareData.length >= 2 && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-start justify-center overflow-y-auto py-8 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900">ブランドスコア比較</h2>
+              <button onClick={() => setShowCompare(false)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm">閉じる</button>
+            </div>
+
+            {/* 凡例 */}
+            <div className="flex flex-wrap gap-3 mb-6">
+              {compareData.map((a, i) => (
+                <div key={a.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full border" style={{borderColor: COMPARE_COLORS[i]}}>
+                  <div className="w-3 h-3 rounded-full" style={{background: COMPARE_COLORS[i]}} />
+                  <span className="text-sm font-medium text-gray-700">{a.company_name}</span>
+                  <span className="text-xs text-gray-400">({(a.avg_score || 0).toFixed(1)})</span>
+                </div>
+              ))}
+            </div>
+
+            {/* レーダーチャート */}
+            <ResponsiveContainer width="100%" height={480}>
+              <RadarChart data={chartData}>
+                <PolarGrid stroke="#e2e8f0" />
+                <PolarAngleAxis dataKey="category" tick={{ fontSize: 12, fill: '#334155' }} />
+                <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                {compareData.map((a, i) => (
+                  <Radar
+                    key={a.id}
+                    name={a.company_name || ''}
+                    dataKey={`score${i}`}
+                    stroke={COMPARE_COLORS[i]}
+                    fill={COMPARE_COLORS[i]}
+                    fillOpacity={0.15}
+                    strokeWidth={2}
+                  />
+                ))}
+                <Legend />
+              </RadarChart>
+            </ResponsiveContainer>
+
+            {/* スコア比較表 */}
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="p-3 text-left border border-gray-200 text-gray-600">項目</th>
+                    {compareData.map((a, i) => (
+                      <th key={a.id} className="p-3 text-center border border-gray-200" style={{color: COMPARE_COLORS[i]}}>
+                        {a.company_name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {QUESTIONS.map(q => (
+                    <tr key={q.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="p-3 text-gray-600">{q.label}</td>
+                      {compareData.map((a, i) => {
+                        const score = (a as any)[q.id] || 0;
+                        return (
+                          <td key={a.id} className="p-3 text-center">
+                            <span className={`font-bold ${score <= 2 ? 'text-red-600' : score === 3 ? 'text-yellow-600' : 'text-blue-600'}`}>
+                              {score}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  <tr className="bg-gray-50 font-bold">
+                    <td className="p-3 text-gray-700">平均スコア</td>
+                    {compareData.map((a, i) => (
+                      <td key={a.id} className="p-3 text-center">
+                        <span className={`text-lg font-bold ${(a.avg_score || 0) <= 2 ? 'text-red-600' : (a.avg_score || 0) <= 3 ? 'text-yellow-600' : 'text-blue-600'}`}>
+                          {(a.avg_score || 0).toFixed(1)}
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* メモモーダル */}
       {memoModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">💬 壁打ちメモ</h3>
-            <textarea value={memoModal.memo} onChange={e => setMemoModal({ ...memoModal, memo: e.target.value })}
-              className="w-full p-4 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-purple-400"
-              rows={8} placeholder="壁打きセッションの内容・気づき・次のアクションを記録してください" />
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg">
+            <h3 className="font-bold text-gray-900 mb-4">壁打ちメモ</h3>
+            <textarea value={memoModal.memo} onChange={e => setMemoModal({...memoModal, memo: e.target.value})}
+              className="w-full p-3 border border-gray-300 rounded-lg text-sm resize-none" rows={8}
+              placeholder="壁打ちセッションの内容、課題、次のアクションなど..." />
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => setMemoModal(null)}
-                className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium">キャンセル</button>
-              <button onClick={saveMemo}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">保存</button>
+              <button onClick={() => setMemoModal(null)} className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm">キャンセル</button>
+              <button onClick={saveMemo} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold">保存</button>
             </div>
           </div>
         </div>
@@ -523,11 +697,3 @@ export default function BrandCheckAdminPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
