@@ -267,7 +267,7 @@ export default function ResultPage() {
               <div className="flex-1">
                 <p style={{color:"#7a9cc8",fontSize:"12px"}} className="mb-2">総合スコア</p>
                 <div className="w-full h-1.5 rounded-full mb-2" style={{background:"#1e3a6e"}}>
-                  <div className="h-1.5 rounded-full" style={{background:"#93b4d4"}} style={{ width: `${(parseFloat(avgScore) / 5) * 100}%` }} />
+                  <div className="h-1.5 rounded-full" style={{background:"#93b4d4", width: `${(parseFloat(avgScore) / 5) * 100}%`}} />
                 </div>
                 <p className="text-xs text-gray-500">
                   {parseFloat(avgScore) >= 4 ? 'ブランドの土台が整っています' :
@@ -649,6 +649,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
