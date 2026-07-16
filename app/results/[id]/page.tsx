@@ -458,3 +458,158 @@ export default function ResultPage() {
     </>
   );
 }
+            {stage2Unlocked && (
+              <div>
+                {isAdmin && (
+                  <div className="no-print px-8 py-5 border-t border-navy-100 bg-gray-50">
+                    <p className="text-xs text-gray-400 mb-2">壁打ちメモ（内部記録）</p>
+                    {editMode ? (
+                      <textarea value={consultationMemo} onChange={e => setConsultationMemo(e.target.value)}
+                        className="w-full p-3 border border-gray-200 rounded-lg text-sm bg-white" rows={4} />
+                    ) : (
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{consultationMemo || '未記入'}</p>
+                    )}
+                  </div>
+                )}
+                {(displayAnalysis?.improvementRecommendations?.length ?? 0) > 0 && (
+                  <div className="px-8 py-6 border-t border-gray-100">
+                    <p className="text-xs text-navy-400 mb-1">{nextNum()}</p>
+                    <h2 className="text-sm font-medium text-navy-900 mb-1">改善提案（優先3項目）</h2>
+                    <p className="text-xs text-gray-400 mb-4">詳細はブランド診断パッケージでご提供します</p>
+                    <div className="space-y-2">
+                      {displayAnalysis?.improvementRecommendations?.map((item, i) => {
+                        const titleMatch = item.match(/【.+?】/);
+                        const title = titleMatch ? titleMatch[0] : `改善項目 ${i + 1}`;
+                        return (
+                          <div key={i} className="flex items-center gap-3 p-3.5 border border-gray-100 rounded-xl bg-gray-50">
+                            <span className="text-xs text-gray-400 flex-shrink-0">{i + 1}</span>
+                            <p className="text-sm text-gray-700 flex-1">{title}</p>
+                            {!stage3Unlocked && <span className="text-gray-300 text-xs">詳細あり</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                <div className="hidden print:block px-8 py-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-400 mb-1">ブランド診断パッケージのご相談はこちら</p>
+                  <p className="text-xs text-gray-600">https://timerex.net/s/huvdesignoffice_50ec/6cdca60c</p>
+                </div>
+                {!stage3Unlocked && (
+                  <div className="no-print px-8 py-8 border-t border-gray-100">
+                    <div className="border border-gray-200 rounded-xl p-6 text-center">
+                      <h2 className="text-base font-medium text-gray-800 mb-2">ブランド診断パッケージ</h2>
+                      <p className="text-xs text-gray-400 mb-3">改善提案の詳細 / アクションプラン / フェーズ別アドバイス / 総合評価</p>
+                      <p className="text-sm text-gray-500 leading-relaxed mb-4">壁打ちで見えてきた課題をもとに、貴社専用の戦略レポートをお届けします。</p>
+                      <p className="text-2xl font-medium text-gray-900 mb-5">150,000<span className="text-sm font-normal text-gray-400"> 円（税別）</span></p>
+                      <a href="https://timerex.net/s/huvdesignoffice_50ec/6cdca60c" target="_blank" rel="noopener noreferrer"
+                        className="inline-block text-sm font-medium text-white bg-[#0f2044] rounded-lg px-6 py-2.5 hover:bg-[#1a3a6e] transition-colors">
+                        パッケージについて相談する →
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {stage3Unlocked && displayAnalysis && (
+                  <div className="border-t border-gray-100">
+                    <div className="px-8 py-3 bg-[#0f2044]">
+                      <p className="text-xs text-blue-200 text-center">ブランド診断パッケージ — フルレポート</p>
+                    </div>
+                    <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
+                      <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
+                      <h2 className="text-sm font-medium text-[#0f2044] mb-3">総合評価</h2>
+                      {editMode ? (
+                        <textarea value={editedReport?.overallComment || ''} onChange={e => updateField('overallComment', e.target.value)}
+                          className="w-full p-3 border border-gray-200 rounded-lg text-sm" rows={6} />
+                      ) : (
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{displayAnalysis.overallComment}</p>
+                      )}
+                    </div>
+                    {displayAnalysis.contradictionsAndRisks?.length > 0 && (
+                      <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
+                        <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
+                        <h2 className="text-sm font-medium text-[#0f2044] mb-1">矛盾点とリスク（CRIベース）</h2>
+                        <p className="text-xs text-gray-400 mb-4">このまま放置した場合に起こりうる具体的な損失です</p>
+                        <div className="space-y-3">
+                          {displayAnalysis.contradictionsAndRisks.map((item, i) => (
+                            <div key={i} className="border border-gray-100 rounded-xl p-4">
+                              <div className="flex items-start gap-3">
+                                <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{i + 1}</span>
+                                {editMode ? (
+                                  <textarea value={editedReport?.contradictionsAndRisks?.[i] || ''} onChange={e => updateArrayField('contradictionsAndRisks', i, e.target.value)}
+                                    className="flex-1 p-2 border border-gray-200 rounded text-sm" rows={3} />
+                                ) : (
+                                  <p className="text-sm text-gray-700 leading-relaxed flex-1">{item}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {displayAnalysis.improvementRecommendations?.length > 0 && (
+                      <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
+                        <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
+                        <h2 className="text-sm font-medium text-[#0f2044] mb-4">改善提案 詳細</h2>
+                        <div className="space-y-3">
+                          {displayAnalysis.improvementRecommendations.map((item, i) => (
+                            <div key={i} className="border border-gray-100 rounded-xl p-4">
+                              <div className="flex items-start gap-3">
+                                <span className="text-xs text-gray-400 flex-shrink-0 mt-0.5">{i + 1}</span>
+                                {editMode ? (
+                                  <textarea value={editedReport?.improvementRecommendations?.[i] || ''} onChange={e => updateArrayField('improvementRecommendations', i, e.target.value)}
+                                    className="flex-1 p-2 border border-gray-200 rounded text-sm" rows={4} />
+                                ) : (
+                                  <p className="text-sm text-gray-700 leading-relaxed flex-1">{item}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
+                      <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
+                      <h2 className="text-sm font-medium text-[#0f2044] mb-4">アクションプラン</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {[
+                          { key: 'actionPlan3Months' as keyof AIReport, label: '3ヶ月後' },
+                          { key: 'actionPlan6Months' as keyof AIReport, label: '6ヶ月後' },
+                          { key: 'actionPlan1Year'   as keyof AIReport, label: '1年後' },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                            <h4 className="text-xs font-medium text-gray-500 mb-2">{label}</h4>
+                            {editMode ? (
+                              <textarea value={(editedReport?.[key] as string[])?.[0] || ''} onChange={e => updateArrayField(key, 0, e.target.value)}
+                                className="w-full p-2 border border-gray-200 rounded text-xs bg-white" rows={5} />
+                            ) : (
+                              <p className="text-xs text-gray-600 leading-relaxed">{(displayAnalysis[key] as string[])?.[0]}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {displayAnalysis.phaseAdvice && (
+                      <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
+                        <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
+                        <h2 className="text-sm font-medium text-[#0f2044] mb-3">事業フェーズ別アドバイス</h2>
+                        {editMode ? (
+                          <textarea value={editedReport?.phaseAdvice || ''} onChange={e => updateField('phaseAdvice', e.target.value)}
+                            className="w-full p-3 border border-gray-200 rounded-lg text-sm" rows={5} />
+                        ) : (
+                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{displayAnalysis.phaseAdvice}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="px-8 py-4 border-t border-gray-100 bg-[#0f2044]">
+              <p className="text-xs text-blue-200 text-center">© 2026 株式会社HUV DESIGN OFFICE</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
