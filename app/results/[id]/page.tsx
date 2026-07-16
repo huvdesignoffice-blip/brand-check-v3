@@ -503,7 +503,7 @@ export default function ResultPage() {
                       <p className="text-sm text-gray-500 leading-relaxed mb-4">壁打ちで見えてきた課題をもとに、貴社専用の戦略レポートをお届けします。</p>
                       <p className="text-2xl font-medium text-gray-900 mb-5">150,000<span className="text-sm font-normal text-gray-400"> 円（税別）</span></p>
                       <a href="https://timerex.net/s/huvdesignoffice_50ec/6cdca60c" target="_blank" rel="noopener noreferrer"
-                        className="inline-block text-sm font-medium text-white bg-[#0f2044] rounded-lg px-6 py-2.5 hover:bg-[#1a3a6e] transition-colors">
+                        className="inline-block text-sm font-medium text-white  rounded-lg px-6 py-2.5  transition-colors" style={{background:"#0f2044"}}>
                         パッケージについて相談する →
                       </a>
                     </div>
@@ -511,12 +511,12 @@ export default function ResultPage() {
                 )}
                 {stage3Unlocked && displayAnalysis && (
                   <div className="border-t border-gray-100">
-                    <div className="px-8 py-3 bg-[#0f2044]">
+                    <div className="px-8 py-3 " style={{background:"#0f2044"}}>
                       <p className="text-xs text-blue-200 text-center">ブランド診断パッケージ — フルレポート</p>
                     </div>
                     <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
                       <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
-                      <h2 className="text-sm font-medium text-[#0f2044] mb-3">総合評価</h2>
+                      <h2 className="text-sm font-medium  mb-3" style={{color:"#0f2044"}}>総合評価</h2>
                       {editMode ? (
                         <textarea value={editedReport?.overallComment || ''} onChange={e => updateField('overallComment', e.target.value)}
                           className="w-full p-3 border border-gray-200 rounded-lg text-sm" rows={6} />
@@ -527,7 +527,7 @@ export default function ResultPage() {
                     {displayAnalysis.contradictionsAndRisks?.length > 0 && (
                       <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
                         <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
-                        <h2 className="text-sm font-medium text-[#0f2044] mb-1">矛盾点とリスク（CRIベース）</h2>
+                        <h2 className="text-sm font-medium  mb-1" style={{color:"#0f2044"}}>矛盾点とリスク（CRIベース）</h2>
                         <p className="text-xs text-gray-400 mb-4">このまま放置した場合に起こりうる具体的な損失です</p>
                         <div className="space-y-3">
                           {displayAnalysis.contradictionsAndRisks.map((item, i) => (
@@ -549,7 +549,7 @@ export default function ResultPage() {
                     {displayAnalysis.improvementRecommendations?.length > 0 && (
                       <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
                         <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
-                        <h2 className="text-sm font-medium text-[#0f2044] mb-4">改善提案 詳細</h2>
+                        <h2 className="text-sm font-medium  mb-4" style={{color:"#0f2044"}}>改善提案 詳細</h2>
                         <div className="space-y-3">
                           {displayAnalysis.improvementRecommendations.map((item, i) => (
                             <div key={i} className="border border-gray-100 rounded-xl p-4">
@@ -569,7 +569,7 @@ export default function ResultPage() {
                     )}
                     <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
                       <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
-                      <h2 className="text-sm font-medium text-[#0f2044] mb-4">アクションプラン</h2>
+                      <h2 className="text-sm font-medium  mb-4" style={{color:"#0f2044"}}>アクションプラン</h2>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         {[
                           { key: 'actionPlan3Months' as keyof AIReport, label: '3ヶ月後' },
@@ -591,7 +591,7 @@ export default function ResultPage() {
                     {displayAnalysis.phaseAdvice && (
                       <div className="px-8 py-6 border-b border-gray-100 print:break-inside-avoid">
                         <p className="text-xs text-gray-400 mb-1">{nextNum()}</p>
-                        <h2 className="text-sm font-medium text-[#0f2044] mb-3">事業フェーズ別アドバイス</h2>
+                        <h2 className="text-sm font-medium  mb-3" style={{color:"#0f2044"}}>事業フェーズ別アドバイス</h2>
                         {editMode ? (
                           <textarea value={editedReport?.phaseAdvice || ''} onChange={e => updateField('phaseAdvice', e.target.value)}
                             className="w-full p-3 border border-gray-200 rounded-lg text-sm" rows={5} />
@@ -604,7 +604,7 @@ export default function ResultPage() {
                 )}
               </div>
             )}
-            <div className="px-8 py-4 border-t border-gray-100 bg-[#0f2044]">
+            <div className="px-8 py-4 border-t border-gray-100 " style={{background:"#0f2044"}}>
               <p className="text-xs text-blue-200 text-center">© 2026 株式会社HUV DESIGN OFFICE</p>
             </div>
           </div>
@@ -613,3 +613,4 @@ export default function ResultPage() {
     </>
   );
 }
+
