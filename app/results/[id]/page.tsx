@@ -260,7 +260,7 @@ export default function ResultPage() {
 
             {/* 総合スコア */}
             <div className="px-8 py-6 flex items-center gap-6 border-b-2" style={{background:"#0f2044",borderColor:"#1e3a6e"}}>
-              <div className="flex-shrink-0 w-20 h-20 rounded-full border-2" style={{borderColor:"#3a6aae"}} flex flex-col items-center justify-center">
+              <div className="flex-shrink-0 w-20 h-20 rounded-full border-2" style={{borderColor:"#3a6aae"}} className="flex flex-col items-center justify-center">
                 <span className="text-3xl font-medium leading-none" style={{color:"#ffffff"}}>{avgScore}</span>
                 <span className="text-xs mt-0.5" style={{color:"#7a9cc8"}}>/ 5.0</span>
               </div>
@@ -649,4 +649,5 @@ export default function ResultPage() {
     </>
   );
 }
+
 
