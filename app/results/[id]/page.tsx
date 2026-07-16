@@ -377,7 +377,7 @@ export default function ResultPage() {
                       </div>
                       <div>
                         <div className="h-1 rounded-full" style={{background:"#e2e8f0"}}>
-                          <div className="h-1 rounded-full" style={{background:"#2563eb", width: `${(score / 5) * 100}%`}} />
+                          <div className="h-1 rounded-full" style={{background: score <= 2 ? "#ef4444" : score === 3 ? "#eab308" : "#2563eb", width: `${(score / 5) * 100}%`}} />
                         </div>
                       </div>
                     </div>
@@ -395,7 +395,7 @@ export default function ResultPage() {
                   <PolarGrid stroke="#cbd5e1" />
                   <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: "#475569" }} />
                   <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 9, fill: "#94a3b8" }} />
-                  <Radar name="スコア" dataKey="score" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.25} strokeWidth={2} />
+                  <Radar name="スコア" dataKey="score" stroke={parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) < 4 ? "#eab308" : "#2563eb"} fill={parseFloat(avgScore) <= 2 ? "#ef4444" : parseFloat(avgScore) < 4 ? "#eab308" : "#2563eb"} fillOpacity={0.25} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -417,7 +417,7 @@ export default function ResultPage() {
                     </div>
                     <p className="text-xs text-gray-500 mb-3">{criData.level}</p>
                     <div className="h-1.5 bg-gray-200 rounded-full mb-1">
-                      <div className="h-1.5 rounded-full bg-gray-600" style={{ width: `${Math.min((criData.cri / 10) * 100, 100)}%` }} />
+                      <div className="h-1.5 rounded-full" style={{background: criData.cri <= 3 ? "#ef4444" : criData.cri <= 6 ? "#eab308" : "#2563eb"}} style={{ width: `${Math.min((criData.cri / 10) * 100, 100)}%` }} />
                     </div>
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
                       <span>整合</span><span>要整理</span>
@@ -649,6 +649,7 @@ export default function ResultPage() {
     </>
   );
 }
+
 
 
 
