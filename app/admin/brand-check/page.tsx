@@ -63,6 +63,122 @@ const QUESTIONS = [
 
 const COMPARE_COLORS = ['#2563eb','#ef4444','#16a34a','#d97706','#7c3aed','#db2777'];
 
+const Q_LABELS_ADMIN: Record<string, string> = {
+  q1_target_insight: 'ターゲット理解',
+  q2_brand_story: 'ブランドストーリー・WHY',
+  q3_brand_personality: 'ブランドパーソナリティ',
+  q4_competitive_analysis: '競合分析',
+  q5_self_analysis: '自社分析',
+  q6_value_proposition: '価値提案',
+  q7_uniqueness: '独自性',
+  q8_product_uniqueness: '商品・サービス独自性反映',
+  q9_communication: 'コミュニケーション一貫性',
+  q10_inner_branding: 'インナーブランディング',
+  q11_kpi: 'KPI設定と成果確認',
+  q12_guideline: 'ブランドガイドライン整備',
+};
+const CHAIN_KEYS = ['q1_target_insight','q2_brand_story','q3_brand_personality','q4_competitive_analysis','q5_self_analysis','q6_value_proposition','q7_uniqueness','q8_product_uniqueness','q9_communication','q10_inner_branding','q11_kpi','q12_guideline'];
+
+function generateEmailBody(a: Assessment): string {
+  const scores: Record<string, number> = {};
+  CHAIN_KEYS.forEach(k => { scores[k] = (a as any)[k] || 1; });
+  const q1 = scores['q1_target_insight'];
+  const avg = (a.avg_score || 0).toFixed(1);
+  const name = a.respondent_name || '担当者';
+  const company = a.company_name || '御社';
+  const highItems = CHAIN_KEYS.filter(k => scores[k] >= 4);
+  const lowItems = CHAIN_KEYS.filter(k => scores[k] <= 2);
+
+  let core = '';
+  let chainSection = '';
+
+  if (q1 <= 3) {
+    core = `今回の診断は「ターゲット理解」を起点に、\n時計回りに連鎖するリスクを読み解く構造になっています。\n\n${company}様の診断で最初に目を向けるべきは、\n起点となるQ1「ターゲット理解（${q1}/5）」です。\n「誰に届けるか」が曖昧な状態では、\nどれだけ強い世界観やストーリーがあっても、\nそれは「誰に向けたものか」が定まっていない状態です。`;
+    if (highItems.length > 0) {
+      const highLines = highItems.map(k => `Q「${Q_LABELS_ADMIN[k]}（${scores[k]}/5）」`).join('\n');
+      core += `\n\n${highLines}\nこの項目のスコアが高いのは事実ですが、\nターゲットが明確でない現状では、\n「誰にとっての強みか」の根拠が曖昧なまま、\nという状態とも言えます。`;
+    }
+    const riskSteps = [
+      `ターゲットが曖昧`,
+      `　↓\n誰に向けたパーソナリティか定義できない（${Q_LABELS_ADMIN['q3_brand_personality']}　${scores['q3_brand_personality']}/5）`,
+      `　↓\n価値提案・独自性が市場に届かない`,
+      `　↓\nコミュニケーションがバラバラになる（${Q_LABELS_ADMIN['q9_communication']}　${scores['q9_communication']}/5）`,
+      `　↓\n社内にも浸透しない（${Q_LABELS_ADMIN['q10_inner_branding']}　${scores['q10_inner_branding']}/5）`,
+      `　↓\n何が効いているか測れない（${Q_LABELS_ADMIN['q11_kpi']}　${scores['q11_kpi']}/5）`,
+    ];
+    chainSection = riskSteps.join('\n');
+  } else {
+    core = `ターゲット理解を起点とした強みが確認できます。\n`;
+    if (highItems.length > 0) {
+      core += highItems.map(k => `「${Q_LABELS_ADMIN[k]}（${scores[k]}/5）」`).join('・') + `\nこれらは${company}様のブランドの土台として機能しています。`;
+    }
+    if (lowItems.length > 0) {
+      chainSection = lowItems.map((k, i) => `${i + 1}. ${Q_LABELS_ADMIN[k]}（${scores[k]}/5）`).join('\n');
+    }
+  }
+
+  const summary = q1 <= 3
+    ? `御社には世界観と理念があります。\nただ「誰に届けるか」を起点に設計し直すことで、\nはじめてその強みが経営の力になります。`
+    : `強みを活かしながら、優先項目を整備することで\nブランド力がさらに経営の力になります。`;
+
+  return `${name}様
+お世話になっております。
+HUV DESIGN OFFICEの入倉です。
+
+さて、表題の件ですが、診断結果をお送りします。
+詳細は、以下のレポートURLよりご確認ください。
+https://brand-check-v3.vercel.app/results/${a.id}
+
+━━━━━━━━━━━━━━━━━━━━━━
+▌診断結果サマリー
+━━━━━━━━━━━━━━━━━━━━━━
+総合スコア　${avg} / 5.0
+
+【診断の核心】
+${core}
+
+【連鎖するリスク】
+${chainSection}
+
+【整理すると】
+${summary}
+
+━━━━━━━━━━━━━━━━━━━━━━
+レポートをご覧いただいて、いかがでしたか？
+スコアの意味や、御社の課題として浮かび上がった点について、30〜60分ほどお時間をいただけるようであれば、無料でフィードバックセッションを実施しています。
+
+「数字は見たけど、自社にとって何が重要なのか」
+「どこから手をつければいいのか」
+
+そういった疑問を、一緒に整理する場にできればと思っています。
+ご興味があれば、以下よりご都合の良い日時をお知らせください。
+オンライン（Zoom）にて対応いたします。
+
+▶ ご希望の場合は下記からご都合の良い日程をお選びください。（無料）
+https://timerex.net/s/huvdesignoffice_50ec/6cdca60c
+
+その他ご不明な点がございましたら、お気軽にお申し付けください。
+引き続き宜しくお願いいたします。
+
+----------------------------------------------------
+HUV DESIGN OFFICE, Inc.
+入倉　大亮
+Daisuke Irikura
+T +81-90-2167-5412
+----------------------------------------------------`;
+}
+
+function openOutlookDraft(a: Assessment) {
+  if (!a.respondent_email) { alert('メールアドレスがありません'); return; }
+  const subject = encodeURIComponent(`【BRAND CHECK診断レポート】${a.company_name}様｜HUV DESIGN OFFICE`);
+  const body = encodeURIComponent(generateEmailBody(a));
+  const to = encodeURIComponent(a.respondent_email);
+  const url = `https://outlook.live.com/mail/0/deeplink/compose?to=${to}&subject=${subject}&body=${body}`;
+  window.open(url, '_blank');
+}
+
+
+
 export default function BrandCheckAdminPage() {
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
@@ -238,19 +354,9 @@ export default function BrandCheckAdminPage() {
     alert("メモを保存しました");
   }
 
-  async function sendReportEmail(a: Assessment) {
-    if (!a.respondent_email) { alert("メールアドレスがありません"); return; }
-    if (!confirm(`${a.company_name} ${a.respondent_name}様にレポートURLを送信しますか？`)) return;
-    setSendingEmail(a.id);
-    try {
-      const res = await fetch('/api/send-report-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: a.respondent_email, company_name: a.company_name, respondent_name: a.respondent_name, result_id: a.id }),
-      });
-      alert(res.ok ? "送信しました" : "送信に失敗しました");
-    } catch { alert("送信エラー"); }
-    finally { setSendingEmail(null); }
+  // Outlookで下書きを開く（sendReportEmailの代わり）
+  function sendReportEmail(a: Assessment) {
+    openOutlookDraft(a);
   }
 
   async function createPartner() {
@@ -475,9 +581,9 @@ export default function BrandCheckAdminPage() {
                               <div className="flex gap-2 flex-wrap">
                                 <a href={`/results/${a.id}`} target="_blank"
                                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium">詳細</a>
-                                <button onClick={() => sendReportEmail(a)} disabled={sendingEmail === a.id || !a.respondent_email}
+                                <button onClick={() => sendReportEmail(a)} disabled={!a.respondent_email}
                                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium disabled:opacity-40">
-                                  {sendingEmail === a.id ? '送信中...' : '送信'}
+                                  Outlookで送信
                                 </button>
                                 <button onClick={() => handleDelete(a.id)}
                                   className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium">削除</button>
