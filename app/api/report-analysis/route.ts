@@ -99,8 +99,15 @@ export async function GET(request: NextRequest) {
         }
       } catch (e) {
         // APIクレジット切れなどでも、数値部分のレポートは表示できるようにする
-        aiError = e instanceof Error ? e.message : "AI所見の生成に失敗しました";
-        console.error("[report-analysis] AI所見の生成に失敗:", aiError);
+        // Anthropic APIのエラーは中身がオブジェクトのため、理由の文章まで取り出して記録する
+        const apiErr = e as { status?: number; error?: { error?: { type?: string; message?: string } } };
+        const detail = apiErr?.error?.error;
+        aiError = detail?.message
+          ? `${apiErr.status ?? ""} ${detail.type ?? ""}: ${detail.message}`.trim()
+          : e instanceof Error
+            ? e.message
+            : "AI所見の生成に失敗しました";
+        console.error("[report-analysis] AI所見の生成に失敗: " + aiError);
       }
     }
 

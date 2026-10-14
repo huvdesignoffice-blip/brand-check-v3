@@ -120,8 +120,23 @@ export function normalizeRow(row: Row): BrandCheckInput {
     }
   }
 
+  // 候補名で見つからないときは、カラム名に含まれる語で探す（例：vision_future など）
+  const FUZZY: Partial<Record<keyof typeof FIELD_CANDIDATES, RegExp>> = {
+    vision: /vision|future|goal|ビジョン/i,
+    philosophy: /philosoph|mission|理念|value/i,
+    revenueScale: /revenue|sales|売上/i,
+    otherChallenge: /(challenge|issue).*(other|text|free)|(other|free).*(challenge|issue)/i,
+  };
+  const fuzzyKey = (key: keyof typeof FIELD_CANDIDATES) => {
+    const re = FUZZY[key];
+    if (!re) return undefined;
+    return Object.keys(row).find((k) => re.test(k) && !/^q\d/.test(k) && (typeof row[k] === "string" || row[k] === null));
+  };
+
   const textField = (key: keyof typeof FIELD_CANDIDATES, label: string, required = false) => {
     if (!hasAny(row, FIELD_CANDIDATES[key])) {
+      const fk = fuzzyKey(key);
+      if (fk) return str(row[fk]);
       if (required) warnings.push(`${label}のカラムが見つかりません（候補：${FIELD_CANDIDATES[key].join(", ")}）`);
       return "";
     }
