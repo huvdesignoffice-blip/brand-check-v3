@@ -38,39 +38,19 @@ export const QUESTIONS: QuestionDef[] = [
 
 export const qTitle = (no: number) => QUESTIONS[no - 1]?.title ?? `Q${no}`;
 
-// Q1が3以下のときに、レポートで示す連鎖の順番
-export const Q1_CHAIN = [1, 3, 9, 10, 11];
-export const Q1_THRESHOLD = 3; // Q1 <= 3 で「土台が伴っていない可能性」モード
-
 // ---------------------------------------------------------------------
-// 横の一貫性：上流 → 下流 の組み合わせ
-// 下流の点数が上流より2点以上高いとき「土台を超えた高評価」として矛盾に数える
+// 上流 → 下流 のロジック（Q1 → Q12 を1本の流れとして扱う）
+// 上流が戦略、下流が手段と成果。上流が整っている範囲までしか、下流の評価を認めない。
+// 実効スコア(i) = min(自己評価(i), 実効スコア(i-1) + FLOW_TOLERANCE)
 // ---------------------------------------------------------------------
-export type ContradictionPair = { up: number; down: number; note: string };
-
-export const CONTRADICTION_PAIRS: ContradictionPair[] = [
-  { up: 1, down: 6, note: "「誰に」の解像度に対して、価値提案の評価が先行している" },
-  { up: 1, down: 7, note: "ターゲットの理解に対して、独自性の評価が先行している" },
-  { up: 1, down: 8, note: "ターゲットの理解に対して、商品・サービスへの反映の評価が先行している" },
-  { up: 4, down: 6, note: "競合との違いの整理に対して、価値提案の評価が先行している" },
-  { up: 4, down: 7, note: "競合との違いの整理に対して、独自性の評価が先行している" },
-  { up: 5, down: 6, note: "自社の強み・弱みの整理に対して、価値提案の評価が先行している" },
-  { up: 5, down: 7, note: "自社の強み・弱みの整理に対して、独自性の評価が先行している" },
-  { up: 2, down: 9, note: "WHYの言語化に対して、接点ごとの一貫性の評価が先行している" },
-  { up: 2, down: 10, note: "WHYの言語化に対して、社内での体現の評価が先行している" },
-  { up: 3, down: 9, note: "ブランドの人格・トーンの定義に対して、コミュニケーションの一貫性の評価が先行している" },
-  { up: 3, down: 12, note: "ブランドの人格・トーンの定義に対して、ガイドラインの評価が先行している" },
-  { up: 6, down: 8, note: "価値提案の明文化に対して、商品・サービスへの反映の評価が先行している" },
-  { up: 7, down: 8, note: "独自性の評価に対して、商品・サービスへの反映の評価が先行している" },
-];
-
-export const CONTRADICTION_MIN_GAP = 2; // 2点以上の差で矛盾として数える
-export const CRI_PER_SEVERITY = 2; // 深刻度1につきCRI +2.0（上限10）
+export const FLOW_TOLERANCE = 0; // 上流を何点まで超えても認めるか（0 = 上流を超えた分はすべて「裏付け未確認」）
+export const BOTTLENECK_MAX = 3; // 最も上流にある、この点数以下の設問を「流れが止まっている地点」とする
+export const CONFIRMED_MIN = 4; // 実効スコアがこの点数以上なら「確定した強み」
 
 // ---------------------------------------------------------------------
 // 現在の課題 → 関連設問
-// direct：6章「自己評価と課題認識のずれ」の判定に使う
-// upstream：8章「課題とのつながり」で連鎖をさかのぼる説明に使う
+// direct：その課題に直接関係する設問（6章のずれの判定、8章のつながりの起点）
+// 8章では、direct より上流にある3点以下の設問を、流れに沿ってさかのぼって示す
 // aliases：旧アンケートの表記（過去データ）をこの課題として読み替える
 // ---------------------------------------------------------------------
 export type ChallengeDef = {
@@ -78,33 +58,32 @@ export type ChallengeDef = {
   category: string;
   label: string;
   direct: number[];
-  upstream: number[];
   aliases?: string[];
 };
 
 export const CHALLENGES: ChallengeDef[] = [
   // ブランド戦略
-  { id: "direction", category: "ブランド戦略", label: "ブランドの方向性が定まっていない", direct: [2], upstream: [1] },
-  { id: "differentiation", category: "ブランド戦略", label: "競合との差別化ができていない", direct: [4, 7], upstream: [1, 5], aliases: ["競合との差別化"] },
-  { id: "target", category: "ブランド戦略", label: "ターゲット顧客が明確でない", direct: [1], upstream: [] },
-  { id: "value_prop", category: "ブランド戦略", label: "価値提案が言語化できていない", direct: [6], upstream: [1, 5], aliases: ["強みの言語化・明確化", "強みの言語化"] },
+  { id: "direction", category: "ブランド戦略", label: "ブランドの方向性が定まっていない", direct: [2] },
+  { id: "differentiation", category: "ブランド戦略", label: "競合との差別化ができていない", direct: [4, 7], aliases: ["競合との差別化"] },
+  { id: "target", category: "ブランド戦略", label: "ターゲット顧客が明確でない", direct: [1] },
+  { id: "value_prop", category: "ブランド戦略", label: "価値提案が言語化できていない", direct: [6], aliases: ["強みの言語化・明確化", "強みの言語化"] },
   // 認知・集客
-  { id: "acquisition", category: "認知・集客", label: "新規顧客の獲得が難しい", direct: [9], upstream: [1, 6], aliases: ["新規集客の低迷", "認知・知名度不足"] },
-  { id: "sns", category: "認知・集客", label: "SNS・Web集客がうまくいかない", direct: [9], upstream: [3, 12], aliases: ["情報発信・SNS運用"] },
-  { id: "referral", category: "認知・集客", label: "口コミ・紹介が少ない", direct: [8], upstream: [1, 7] },
-  { id: "ads", category: "認知・集客", label: "広告効果が出ない", direct: [11], upstream: [1, 9] },
+  { id: "acquisition", category: "認知・集客", label: "新規顧客の獲得が難しい", direct: [9], aliases: ["新規集客の低迷", "認知・知名度不足"] },
+  { id: "sns", category: "認知・集客", label: "SNS・Web集客がうまくいかない", direct: [9], aliases: ["情報発信・SNS運用"] },
+  { id: "referral", category: "認知・集客", label: "口コミ・紹介が少ない", direct: [8] },
+  { id: "ads", category: "認知・集客", label: "広告効果が出ない", direct: [11] },
   // 組織・人材
-  { id: "hiring", category: "組織・人材", label: "採用がうまくいかない", direct: [9], upstream: [2] },
-  { id: "turnover", category: "組織・人材", label: "離職率が高い", direct: [10], upstream: [2] },
-  { id: "motivation", category: "組織・人材", label: "社員のモチベーションが低い", direct: [10], upstream: [2] },
-  { id: "philosophy", category: "組織・人材", label: "ブランド理念が社内に浸透していない", direct: [10], upstream: [2, 12], aliases: ["社内の意識統一（理念浸透）", "社内の意識統一"] },
+  { id: "hiring", category: "組織・人材", label: "採用がうまくいかない", direct: [9] },
+  { id: "turnover", category: "組織・人材", label: "離職率が高い", direct: [10] },
+  { id: "motivation", category: "組織・人材", label: "社員のモチベーションが低い", direct: [10] },
+  { id: "philosophy", category: "組織・人材", label: "ブランド理念が社内に浸透していない", direct: [10], aliases: ["社内の意識統一（理念浸透）", "社内の意識統一"] },
   // 売上・収益
-  { id: "sales", category: "売上・収益", label: "売上が伸び悩んでいる", direct: [8], upstream: [6, 11] },
-  { id: "price", category: "売上・収益", label: "価格競争に巻き込まれている", direct: [7], upstream: [4, 6], aliases: ["価格競争からの脱却"] },
-  { id: "repeat", category: "売上・収益", label: "リピーターが増えない", direct: [8], upstream: [1] },
-  { id: "unit_price", category: "売上・収益", label: "単価が上げられない", direct: [7], upstream: [6, 8] },
+  { id: "sales", category: "売上・収益", label: "売上が伸び悩んでいる", direct: [8] },
+  { id: "price", category: "売上・収益", label: "価格競争に巻き込まれている", direct: [7], aliases: ["価格競争からの脱却"] },
+  { id: "repeat", category: "売上・収益", label: "リピーターが増えない", direct: [8] },
+  { id: "unit_price", category: "売上・収益", label: "単価が上げられない", direct: [7] },
   // 旧アンケートのみに存在した課題
-  { id: "design", category: "その他（旧項目）", label: "デザインの一貫性（ロゴ・Web等）", direct: [12], upstream: [3], aliases: ["デザインの一貫性"] },
+  { id: "design", category: "その他（旧項目）", label: "デザインの一貫性（ロゴ・Web等）", direct: [12], aliases: ["デザインの一貫性"] },
 ];
 
 export const PERCEPTION_GAP_MIN_SCORE = 4; // 直接関連の設問が4点以上でチェックあり → ずれ

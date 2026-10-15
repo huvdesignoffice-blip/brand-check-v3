@@ -16,7 +16,7 @@ import { generateFindings, type AiFindings, type VisibleFindings } from "@/lib/b
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const REPORT_VERSION = "v4.0"; // プロンプトや判定ルールを変えたら上げる（キャッシュが作り直される）
+const REPORT_VERSION = "v4.1"; // プロンプトや判定ルールを変えたら上げる（キャッシュが作り直される）
 
 type CachedReport = {
   version: string;

@@ -229,7 +229,11 @@ export default function ResultsPage() {
   }
 
   const { input, metrics: m, findings: f } = data;
-  const radarData = QUESTIONS.map((q) => ({ axis: `Q${q.no} ${q.title}`, score: input.scores[q.no - 1] }));
+  const radarData = QUESTIONS.map((q) => ({
+    axis: `Q${q.no} ${q.title}`,
+    score: input.scores[q.no - 1],
+    effective: m.flow[q.no - 1].effective,
+  }));
   const showPhilosophyVision = m.philosophyVision.hasPhilosophy || m.philosophyVision.hasVision;
 
   return (
@@ -314,22 +318,33 @@ export default function ResultsPage() {
         {/* 02 主要指標 */}
         <Section no="02" title="主要指標">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricTile label="総合スコア" value={m.totalAvg.toFixed(1)} unit="/ 5.0" color={avgColor(m.totalAvg)} note={totalLabel(m.totalAvg)} />
+            <MetricTile label="総合スコア（自己評価）" value={m.totalAvg.toFixed(1)} unit="/ 5.0" color={avgColor(m.totalAvg)} note={totalLabel(m.totalAvg)} />
+            <MetricTile
+              label="実効スコア"
+              value={m.effectiveAvg.toFixed(1)}
+              unit="/ 5.0"
+              color={avgColor(m.effectiveAvg)}
+              note="上流（戦略）の裏付けがある範囲で見た評価"
+            />
             <MetricTile label="CRI（矛盾リスク指数）" value={m.cri.toFixed(1)} unit="/ 10" color={criColor(m.cri)} note={criLabel(m.cri)} />
             <MetricTile
-              label="検出された矛盾"
-              value={String(m.contradictions.length)}
-              unit="件"
-              color={m.contradictions.length === 0 ? SIGNAL.blue : m.contradictions.length <= 2 ? SIGNAL.yellow : SIGNAL.red}
-              note="上流の設問より下流の評価が2点以上先行している組み合わせ"
+              label="上流の裏付けが未確認の設問"
+              value={String(m.overreachItems.length)}
+              unit="/ 11問"
+              color={m.overreachItems.length === 0 ? SIGNAL.blue : m.overreachItems.length <= 3 ? SIGNAL.yellow : SIGNAL.red}
+              note="自己評価が、上流の設問の評価を上回っている設問"
             />
-            <MetricTile
-              label="自己評価と課題認識のずれ"
-              value={String(m.perceptionGaps.length)}
-              unit="件"
-              color={m.perceptionGaps.length === 0 ? SIGNAL.blue : m.perceptionGaps.length <= 2 ? SIGNAL.yellow : SIGNAL.red}
-              note="課題に挙げた項目を、4点以上と自己評価しているケース"
-            />
+          </div>
+          <div className="avoid-break mt-4 rounded-lg border border-slate-200 px-5 py-4">
+            <p className="text-xs font-bold tracking-wider text-slate-500">流れが止まっている地点</p>
+            {m.bottleneck ? (
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <QChip no={m.bottleneck.no} score={m.bottleneck.score} />
+                <span className="text-sm text-slate-600">上流から見て、最初に3点以下となっている設問です。これより下流は、この地点の影響を受けている可能性があります。</span>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-slate-600">すべての設問が4点以上で、流れが止まっている地点は見られません。</p>
+            )}
           </div>
         </Section>
 
@@ -342,18 +357,30 @@ export default function ResultsPage() {
                   <PolarGrid stroke="#e2e8f0" />
                   <PolarAngleAxis dataKey="axis" tick={<RadarTick />} />
                   <PolarRadiusAxis domain={[0, 5]} tickCount={6} tick={{ fontSize: 11, fill: "#94a3b8" }} angle={90} />
-                  <Radar dataKey="score" stroke={NAVY} fill={NAVY} fillOpacity={0.18} strokeWidth={2} isAnimationActive={false} />
+                  <Radar name="自己評価" dataKey="score" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.08} strokeWidth={2} strokeDasharray="5 4" isAnimationActive={false} />
+                  <Radar name="実効スコア" dataKey="effective" stroke={NAVY} fill={NAVY} fillOpacity={0.22} strokeWidth={2} isAnimationActive={false} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-            <p className="mt-1 text-center text-xs text-slate-500">設問1→12は、ブランド基盤 → 戦略設計 → 実行・浸透 の順に並んでいます</p>
+            <div className="mt-1 flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-slate-600">
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-0 w-6 border-t-2 border-dashed" style={{ borderColor: "#94a3b8" }} />
+                自己評価
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-3 w-6 rounded-sm" style={{ backgroundColor: NAVY, opacity: 0.6 }} />
+                実効スコア（上流の裏付けがある範囲）
+              </span>
+            </div>
+            <p className="mt-1 text-center text-xs text-slate-500">Q1→Q12 は上流（戦略）から下流（手段と成果）への一本の流れです。2つの線の差が、上流の裏付けが確認できていない部分です</p>
           </div>
 
           <table className="avoid-break mt-6 w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                 <th className="py-2 pr-4 font-semibold">領域</th>
-                <th className="py-2 pr-4 font-semibold">平均</th>
+                <th className="py-2 pr-4 font-semibold">自己評価</th>
+                <th className="py-2 pr-4 font-semibold">実効</th>
                 <th className="py-2 font-semibold">設問別スコア</th>
               </tr>
             </thead>
@@ -365,6 +392,9 @@ export default function ResultsPage() {
                   </td>
                   <td className="py-3 pr-4 text-lg font-bold tabular-nums" style={{ color: avgColor(d.avg) }}>
                     {d.avg.toFixed(1)}
+                  </td>
+                  <td className="py-3 pr-4 text-lg font-bold tabular-nums" style={{ color: avgColor(d.effectiveAvg) }}>
+                    {d.effectiveAvg.toFixed(1)}
                   </td>
                   <td className="py-3">
                     <div className="flex flex-wrap gap-1.5">
@@ -405,6 +435,9 @@ export default function ResultsPage() {
                         {qTitle(no)}
                       </span>
                       <span className="flex items-center gap-3">
+                        {m.flow[no - 1].overreach > 0 && (
+                          <span className="hidden text-xs text-slate-500 sm:inline">実効 {m.flow[no - 1].effective}</span>
+                        )}
                         <ScoreBar score={input.scores[no - 1]} />
                         <span className="w-8 text-right text-sm font-bold tabular-nums" style={{ color: scoreColor(input.scores[no - 1]) }}>
                           {input.scores[no - 1]}
@@ -419,58 +452,53 @@ export default function ResultsPage() {
           })}
         </Section>
 
-        {/* 05 一貫性 */}
-        <Section no="05" title="一貫性（縦・横）" breakBefore>
-          <h3 className="mb-3 font-bold" style={{ color: NAVY }}>
-            縦の一貫性：基盤から実行までの流れ
-          </h3>
-          <div className="avoid-break flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-            {m.domainAvgs.map((d, i) => (
-              <div key={d.key} className="flex flex-1 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-                <div className="flex-1 rounded-lg border border-slate-200 px-4 py-3 text-center">
-                  <p className="text-xs text-slate-500">{d.label}</p>
-                  <p className="text-2xl font-bold tabular-nums" style={{ color: avgColor(d.avg) }}>
-                    {d.avg.toFixed(1)}
-                  </p>
-                </div>
-                {i < m.domainAvgs.length - 1 && (
-                  <span className="text-center text-slate-400 sm:px-1" aria-hidden>
-                    →
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-          {m.vertical.some((v) => v.reversed) && (
-            <ul className="mt-3 space-y-1 text-sm text-slate-700">
-              {m.vertical
-                .filter((v) => v.reversed)
-                .map((v) => (
-                  <li key={v.from}>
-                    ・下流の「{DOMAIN_LABEL[v.to]}」（{v.toAvg.toFixed(1)}）の評価が、上流の「{DOMAIN_LABEL[v.from]}」（{v.fromAvg.toFixed(1)}）を上回っています。
-                  </li>
-                ))}
-            </ul>
-          )}
+        {/* 05 一貫性（上流 → 下流の流れ） */}
+        <Section no="05" title="一貫性（上流 → 下流の流れ）" breakBefore>
+          <p className="mb-4 text-sm leading-relaxed text-slate-600">
+            Q1からQ12を、上流（戦略）から下流（手段と成果）への一本の流れとして見ています。上流が整っている範囲までしか下流は機能しにくいため、上流の評価を上回っている部分を「上流の裏付けが未確認」として示しています。
+          </p>
+          <ol className="avoid-break overflow-hidden rounded-lg border border-slate-200">
+            {m.flow.map((step, i) => {
+              const isBottleneck = m.bottleneck?.no === step.no;
+              const domainStart = i === 0 || m.flow[i - 1].domain !== step.domain;
+              return (
+                <li key={step.no}>
+                  {domainStart && (
+                    <div className="bg-slate-50 px-4 py-1.5 text-xs font-bold tracking-wider" style={{ color: NAVY }}>
+                      {DOMAIN_LABEL[step.domain]}
+                      <span className="ml-2 font-normal text-slate-500">{step.domain === "execution" ? "手段と成果" : "戦略"}</span>
+                    </div>
+                  )}
+                  <div
+                    className="flex flex-col gap-2 border-t border-slate-100 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                    style={isBottleneck ? { backgroundColor: SIGNAL.yellowBg } : undefined}
+                  >
+                    <span className="text-sm">
+                      <span className="mr-2 font-semibold text-slate-400">Q{step.no}</span>
+                      {qTitle(step.no)}
+                      {isBottleneck && (
+                        <span className="ml-2 rounded px-1.5 py-0.5 text-xs font-bold" style={{ color: SIGNAL.yellow, border: `1px solid ${SIGNAL.yellow}` }}>
+                          流れが止まっている地点
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500">
+                        自己評価 <span className="font-bold tabular-nums" style={{ color: scoreColor(step.score) }}>{step.score}</span>
+                      </span>
+                      <span className="text-slate-300">→</span>
+                      <span className="text-xs text-slate-500">
+                        実効 <span className="font-bold tabular-nums" style={{ color: scoreColor(step.effective) }}>{step.effective}</span>
+                      </span>
+                      <span className="w-28 text-right text-xs text-slate-500">{step.overreach > 0 ? `裏付け未確認 +${step.overreach}` : ""}</span>
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
 
-          {m.q1Mode === "foundation_weak" && (
-            <div className="avoid-break mt-5 rounded-lg border border-slate-200 p-4">
-              <p className="mb-3 text-sm text-slate-600">ターゲット理解（Q1）を起点とした流れ</p>
-              <div className="flex flex-wrap items-center gap-2">
-                {m.q1Chain.map((c, i) => (
-                  <span key={c.no} className="flex items-center gap-2">
-                    <QChip no={c.no} score={c.score} />
-                    {i < m.q1Chain.length - 1 && <span className="text-slate-400">→</span>}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <h3 className="mb-3 mt-8 font-bold" style={{ color: NAVY }}>
-            横の一貫性：設問どうしの食い違い
-          </h3>
-          <div className="avoid-break mb-4">
+          <div className="avoid-break mt-6">
             <div className="mb-1 flex justify-between text-xs text-slate-500">
               <span>CRI（矛盾リスク指数）</span>
               <span className="font-bold tabular-nums" style={{ color: criColor(m.cri) }}>
@@ -480,23 +508,20 @@ export default function ResultsPage() {
             <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
               <div className="h-full rounded-full" style={{ width: `${(m.cri / 10) * 100}%`, backgroundColor: criColor(m.cri) }} />
             </div>
-            <p className="mt-1 text-xs text-slate-500">数値が高いほど、要素間の食い違いが大きいことを示します</p>
+            <p className="mt-1 text-xs text-slate-500">
+              上流の裏付けを超えている点数の合計（{m.overreachTotal}点）をもとにした指数です。数値が高いほど、上流と下流の食い違いが大きいことを示します
+            </p>
           </div>
-          {m.contradictions.length === 0 ? (
-            <p className="text-sm text-slate-600">上流の設問より下流の評価が大きく先行している組み合わせは、見られませんでした。</p>
-          ) : (
-            <ul className="space-y-2">
-              {m.contradictions.map((c) => (
-                <li key={`${c.up}-${c.down}`} className="avoid-break rounded-lg border border-slate-200 px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <QChip no={c.up} score={c.upScore} />
-                    <span className="text-slate-400">→</span>
-                    <QChip no={c.down} score={c.downScore} />
-                  </div>
-                  <p className="mt-2 text-sm text-slate-700">{c.note}</p>
-                </li>
-              ))}
-            </ul>
+
+          {m.unconfirmedHighs.length > 0 && (
+            <div className="avoid-break mt-5 rounded-lg border border-slate-200 px-4 py-3">
+              <p className="mb-2 text-sm text-slate-600">自己評価は4点以上ですが、上流の裏付けが確認できていない設問</p>
+              <div className="flex flex-wrap gap-1.5">
+                {m.unconfirmedHighs.map((no) => (
+                  <QChip key={no} no={no} score={input.scores[no - 1]} />
+                ))}
+              </div>
+            </div>
           )}
           {f ? <Finding text={f.consistency} /> : <AiPending />}
         </Section>
@@ -512,15 +537,19 @@ export default function ResultsPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                   <th className="py-2 pr-4 font-semibold">課題として挙げた項目</th>
-                  <th className="py-2 font-semibold">関連する設問の自己評価</th>
+                  <th className="py-2 pr-4 font-semibold">関連する設問の自己評価</th>
+                  <th className="py-2 font-semibold">実効</th>
                 </tr>
               </thead>
               <tbody>
                 {m.perceptionGaps.map((g) => (
                   <tr key={`${g.challengeLabel}-${g.question}`} className="border-b border-slate-100">
                     <td className="py-3 pr-4">{g.challengeLabel}</td>
-                    <td className="py-3">
+                    <td className="py-3 pr-4">
                       <QChip no={g.question} score={g.score} />
+                    </td>
+                    <td className="py-3 font-bold tabular-nums" style={{ color: scoreColor(g.effective) }}>
+                      {g.effective}
                     </td>
                   </tr>
                 ))}
@@ -563,7 +592,7 @@ export default function ResultsPage() {
           ) : (
             <>
               <p className="mb-3 text-sm text-slate-600">
-                チェックされた課題と、関連している可能性がある設問です。「上流」は、ブランド構築の流れの中で、より手前にある設問を指します。
+                チェックされた課題の多くは、下流（手段と成果）で表れます。それぞれの課題に直接関係する設問と、そこから流れをさかのぼったときに3点以下となっている上流の設問を示しています。
               </p>
               <div className="space-y-3">
                 {m.challengeLinks.map((l) => (
@@ -579,11 +608,11 @@ export default function ResultsPage() {
                           <QChip key={d.no} no={d.no} score={d.score} />
                         ))}
                       </div>
-                      {l.upstream.length > 0 && (
+                      {l.weakUpstream.length > 0 && (
                         <>
                           <span className="text-xs text-slate-500 sm:pt-1.5">上流</span>
                           <div className="flex flex-wrap gap-1.5">
-                            {l.upstream.map((d) => (
+                            {l.weakUpstream.map((d) => (
                               <QChip key={d.no} no={d.no} score={d.score} />
                             ))}
                           </div>
@@ -716,7 +745,23 @@ export default function ResultsPage() {
                 3つの領域
               </dt>
               <dd className="mt-1">
-                ブランド基盤（Q1〜3）、戦略設計（Q4〜7）、実行・浸透（Q8〜12）の3つに分け、手前の領域が後ろの領域を支える流れとして見ています。
+                一本の流れを、ブランド基盤（Q1〜3）、戦略設計（Q4〜7）、実行・浸透（Q8〜12）の3つの区間に分けて示しています。
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold" style={{ color: NAVY }}>
+                上流から下流への流れと実効スコア
+              </dt>
+              <dd className="mt-1">
+                Q1からQ12を、上流（戦略：Q1〜Q7）から下流（手段と成果：Q8〜Q12）への一本の流れとして見ています。上流が整っている範囲までしか下流は機能しにくいという考え方から、各設問の「実効スコア」を、自己評価と、ひとつ上流の設問の実効スコアのうち低いほうとしています。自己評価が実効スコアを上回る部分を「上流の裏付けが未確認」としています。
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold" style={{ color: NAVY }}>
+                流れが止まっている地点・確定した強み
+              </dt>
+              <dd className="mt-1">
+                上流から見て、最初に3点以下となっている設問を「流れが止まっている地点」としています。実効スコアが4点以上の設問（自分も、それより上流もすべて4点以上）だけを「確定した強み」としています。
               </dd>
             </div>
             <div>
@@ -724,7 +769,7 @@ export default function ResultsPage() {
                 CRI（矛盾リスク指数）
               </dt>
               <dd className="mt-1">
-                あらかじめ定めた13組の「上流 → 下流」の設問の組み合わせについて、下流の評価が上流より2点以上高い場合を「食い違い」として数えています。差が2点で1、3点で2、4点で3の重みとし、重みの合計×2.0を0〜10の範囲で示しています。数値が高いほど食い違いが大きいことを示し、2.0未満を青、2.0〜4.9を黄、5.0以上を赤としています。
+                上流の裏付けを超えている点数（自己評価 − 実効スコア）をQ2〜Q12で合計し、起こりうる最大値（44点）に対する割合を0〜10で示しています。数値が高いほど上流と下流の食い違いが大きいことを示し、2.0未満を青、2.0〜4.9を黄、5.0以上を赤としています。
               </dd>
             </div>
             <div>
