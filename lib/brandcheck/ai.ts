@@ -147,26 +147,46 @@ export async function generateFindings(input: BrandCheckInput, metrics: BrandChe
 
   const facts = metricsToFacts(input, metrics);
 
+  // 最新モデルはツールの強制指定（tool_choice: tool / any）に対応していないため、
+  // auto のままツール使用を指示し、ツールが使われなかった場合は本文のJSONを読む
   const message = await client.messages.create({
     model,
     max_tokens: 8000,
     system: SYSTEM,
     tools: [TOOL],
-    tool_choice: { type: "tool", name: TOOL.name },
+    tool_choice: { type: "auto" },
     messages: [
       {
         role: "user",
-        content: `以下は計算済みの診断結果です。この事実だけに基づいて、write_brand_check_report ツールで所見を記入してください。\n\n${facts}`,
+        content: `以下は計算済みの診断結果です。この事実だけに基づいて、必ず write_brand_check_report ツールを1回だけ呼び出して所見を記入してください。ツール以外の文章は不要です。\n\n${facts}`,
       },
     ],
   });
 
   const block = message.content.find((b) => b.type === "tool_use");
-  if (!block || block.type !== "tool_use") {
-    throw new Error("AIの応答に所見が含まれていませんでした");
+  if (block && block.type === "tool_use") {
+    return { findings: sanitize(block.input as AiFindings), model };
   }
-  const findings = block.input as AiFindings;
-  return { findings: sanitize(findings), model };
+
+  const text = message.content
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .join("\n");
+  const parsed = extractJson(text);
+  if (parsed) return { findings: sanitize(parsed as AiFindings), model };
+
+  throw new Error(`AIの応答に所見が含まれていませんでした（stop_reason: ${message.stop_reason}）`);
+}
+
+/** 本文中のJSON（```json ブロック、または最初の { から最後の } まで）を取り出す */
+function extractJson(text: string): unknown | null {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const candidate = fenced ? fenced[1] : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  if (!candidate || !candidate.trim().startsWith("{")) return null;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    return null;
+  }
 }
 
 /** 表記の最終チェック（AIの出力に誤記が混じった場合の保険） */
