@@ -243,34 +243,8 @@ function SurveyPageInner() {
         console.error('Email notification failed:', emailError);
       }
 
-      // AI分析を実行
-      try {
-        const aiResponse = await fetch('/api/analyze-with-ai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            resultId: data.id,
-            scores: [
-              data.q1_target_insight, data.q2_brand_story, data.q3_brand_personality,
-              data.q4_competitive_analysis, data.q5_self_analysis, data.q6_value_proposition,
-              data.q7_uniqueness, data.q8_product_uniqueness, data.q9_communication,
-              data.q10_inner_branding, data.q11_kpi, data.q12_guideline,
-            ],
-            memo: `【企業理念】\n${data.mission || '未記入'}\n\n【3〜5年後のビジョン】\n${data.vision_future || '未記入'}\n\n【課題】\n${data.challenges?.join('、') || '未選択'}${data.other_challenge ? `\nその他: ${data.other_challenge}` : ''}`,
-            businessPhase: data.business_phase,
-            companyName: data.company_name,
-          }),
-        });
-
-        if (aiResponse.ok) {
-          const aiReport = await aiResponse.json();
-          await supabase.from('survey_results').update({ ai_report: aiReport }).eq('id', data.id);
-        } else {
-          console.error('AI analysis failed:', await aiResponse.text());
-        }
-      } catch (aiError) {
-        console.error('AI analysis failed:', aiError);
-      }
+      // 診断レポートの所見は、結果ページを開いたときに /api/report-analysis で作成・保存される
+      // （以前ここで呼んでいた旧方式の /api/analyze-with-ai は廃止）
 
       router.push('/thank-you');
     } catch (error) {
